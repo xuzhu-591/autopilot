@@ -1,5 +1,38 @@
 # Phase: implement — 详细工作流
 
+## Multi-Repo Worktree 创建（仅 multi-repo 模式）
+
+蓝红队启动前，为每个 involved repo 创建 grove worktree：
+
+1. 读取 repos.yaml（路径从状态文件 `repos_file` 字段获取），过滤 `involved: true` 的 repo
+2. 从 `task_dir` 路径推导 task slug，生成统一分支名 `autopilot-<slug>`
+3. 对每个 involved repo：
+   ```bash
+   cd <repo_path>
+   WORKTREE_PATH=$(grove --plain add autopilot-<slug> --create 2>&1 | tail -1)
+   ```
+4. 用 yq 将 worktree 路径写回 repos.yaml：
+   ```bash
+   yq '(.[] | select(.name == "<repo_name>")).worktree = "<worktree_path>"' -i repos.yaml
+   ```
+5. 蓝队 agent prompt 中附上所有 worktree 路径，格式：
+   ```
+   工作目录列表:
+   - raven: /path/to/worktree/raven/autopilot-xxx
+   - raven-cli: /path/to/worktree/raven-cli/autopilot-xxx
+   ```
+6. 红队 agent 同理（红队不看实现代码，但需知道项目结构以生成正确路径的测试文件）
+
+创建完成后继续标准的蓝/红队对抗流程。
+
+### Multi-Repo 合流补充
+
+标准合流步骤之外：
+- `git add` 在各 worktree 中分别执行：`git -C <worktree> add <files>`
+- 状态文件记录各 repo 的变更文件列表（按 repo 分组）
+
+---
+
 ## 核心理念
 - **信息隔离**：红队只能看到设计文档，不能看到蓝队新写的实现代码
 - **独立验证**：红队测试验证的是"应该实现什么"而非"已经实现了什么"
