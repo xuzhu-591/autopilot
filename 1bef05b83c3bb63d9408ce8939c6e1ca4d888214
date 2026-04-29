@@ -1,13 +1,13 @@
 plugins/autopilot/scripts/lib.sh
   6d8e4ba368ccdcce 15,21-31,98,101,324-349
-plugins/autopilot/scripts/setup.sh
-  6d8e4ba368ccdcce 19-22,301,311,315,318,425
-plugins/autopilot/skills/autopilot-continue/SKILL.md
-  6d8e4ba368ccdcce 1-18
 plugins/autopilot/scripts/continue.sh
   6d8e4ba368ccdcce 1-75
+plugins/autopilot/scripts/setup.sh
+  6d8e4ba368ccdcce 19-22,301,311,315,318,425
 plugins/autopilot/scripts/stop-hook.sh
   6d8e4ba368ccdcce 31,121,136,148,153,163,177,186,198,204,222
+plugins/autopilot/skills/autopilot-continue/SKILL.md
+  6d8e4ba368ccdcce 1-18
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -20,20 +20,21 @@ plugins/autopilot/scripts/stop-hook.sh
         "id": "72963fce-7b8c-4cbc-af21-cf41f60e9b75",
         "model": "claude-opus-4-6"
       },
-      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "human_author": "Xu Zhu",
       "messages": [],
       "total_additions": 153,
       "total_deletions": 20,
       "accepted_lines": 153,
       "overriden_lines": 0,
       "per_file_stats": {
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 40,
+          "deletions": 2,
+          "accepted_lines": 40
+        },
         "plugins/autopilot/skills/autopilot-continue/SKILL.md": {
           "additions": 18,
           "accepted_lines": 18
-        },
-        "plugins/autopilot/scripts/continue.sh": {
-          "additions": 75,
-          "accepted_lines": 75
         },
         "plugins/autopilot/scripts/setup.sh": {
           "additions": 9,
@@ -45,10 +46,9 @@ plugins/autopilot/scripts/stop-hook.sh
           "deletions": 11,
           "accepted_lines": 11
         },
-        "plugins/autopilot/scripts/lib.sh": {
-          "additions": 40,
-          "deletions": 2,
-          "accepted_lines": 40
+        "plugins/autopilot/scripts/continue.sh": {
+          "additions": 75,
+          "accepted_lines": 75
         }
       }
     }
