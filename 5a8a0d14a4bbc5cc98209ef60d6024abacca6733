@@ -16,7 +16,7 @@ package.json
         "id": "e7ed708c-d4f1-4003-afb3-9d12fdfe93eb",
         "model": "claude-opus-4-6"
       },
-      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "human_author": "Xu Zhu",
       "messages": [],
       "total_additions": 619,
       "total_deletions": 113,
@@ -28,14 +28,14 @@ package.json
           "deletions": 112,
           "accepted_lines": 501
         },
-        "plugins/autopilot/scripts/lib.sh": {
-          "additions": 5,
-          "accepted_lines": 5
-        },
         "package.json": {
           "additions": 1,
           "deletions": 1,
           "accepted_lines": 1
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 5,
+          "accepted_lines": 5
         }
       }
     }
