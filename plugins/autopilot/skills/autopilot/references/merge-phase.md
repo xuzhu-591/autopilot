@@ -1,5 +1,49 @@
 # Phase: merge — 详细工作流
 
+## Multi-Repo 提交流程（仅 multi-repo 模式）
+
+Multi-repo 模式下，每个有 worktree 的 repo 独立完成 commit：
+
+### 流程
+
+对 repos.yaml 中每个 `involved: true` 且 `worktree` 非空的 repo，按顺序执行：
+
+1. **预收集 diff**：
+   ```bash
+   git -C <worktree_path> diff --stat
+   git -C <worktree_path> diff
+   ```
+2. **启动 commit-agent**（model: "sonnet"），传入：
+   - 该 repo 的 diff（非全局 diff）
+   - 统一的设计目标一句话
+   - 工作目录路径（worktree 路径）
+   - repo 名称（用于 commit scope）
+3. **验证提交**：`git -C <worktree_path> log --oneline -1`
+
+如果某个 repo 无变更（`git diff` 为空），跳过该 repo 的提交。
+
+### 知识路由
+
+Multi-repo 模式下知识提取策略：
+1. 分析本次知识条目（设计决策、调试教训）与哪个 repo 关联最大
+2. 写入该 repo **worktree** 的 `.autopilot/` 目录（如不存在则 `mkdir -p`）
+3. 在该 worktree 内提交：`git -C <worktree> add .autopilot/ && git -C <worktree> commit -m "docs(knowledge): ..."`
+4. 跨 repo 的通用知识写入关联最大的那个 repo，不需要多副本
+
+### 完成报告补充
+
+Multi-repo 完成报告新增：
+```
+## 提交摘要
+- raven: <commit_hash> <message>
+- raven-cli: <commit_hash> <message>
+- raven-team: (无变更，跳过)
+```
+
+完成后继续标准的 phase: done 清理流程。
+
+---
+
 ## 1. 调用 commit Agent（上下文隔离提交）
 
 使用 Agent 工具启动 commit-agent（model: "sonnet"），**不要使用 `Skill: "autopilot-commit"`**（会继承完整父上下文，导致 3-5M token 开销）。

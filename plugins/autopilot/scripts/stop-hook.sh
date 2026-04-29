@@ -239,8 +239,26 @@ fi
 # design 阶段使用 Plan Mode（auto_approve 时跳过 Plan Mode）
 AUTO_APPROVE=$(get_field "auto_approve" || true)
 PLAN_MODE=$(get_field "plan_mode" || true)
+MODE=$(get_field "mode" || true)
+REPOS_FILE=$(get_field "repos_file" || true)
+
+# Multi-repo 追加提示
+MULTI_REPO_HINT=""
+if [[ "$MODE" == "multi-repo" ]] && [[ -n "$REPOS_FILE" ]]; then
+    MULTI_REPO_HINT=" ⚠️ Multi-repo 模式: repos 配置文件在 ${REPOS_FILE}."
+fi
+
 if [[ "$PHASE" == "design" ]]; then
-    if [[ "$AUTO_APPROVE" == "true" ]]; then
+    if [[ "$MODE" == "multi-repo" ]]; then
+        # Multi-repo design: 需要分析涉及哪些 repo
+        if [[ "$AUTO_APPROVE" == "true" ]]; then
+            PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述.${MULTI_REPO_HINT} auto_approve=true: 跳过 Plan Mode, 直接写设计文档到状态文件. ⚠️ Multi-repo 关键步骤: (1) 读取 ${REPOS_FILE} 了解可用仓库; (2) 分析目标涉及哪些 repo, 用 yq 命令更新 repos.yaml 中对应 repo 的 involved=true; (3) 设计文档中明确各 repo 的变更职责. 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet). 按照 autopilot skill 的 Phase: design + Multi-Repo 模式指引执行."
+        elif [[ "$PLAN_MODE" == "deep" ]]; then
+            PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述.${MULTI_REPO_HINT} plan_mode=deep: 先执行 Deep Design 交互探索流程. ⚠️ Multi-repo 关键步骤: (1) 读取 ${REPOS_FILE} 了解可用仓库; (2) 探索各 repo 结构, 确定涉及范围; (3) 用 yq 命令更新 repos.yaml 中对应 repo 的 involved=true; (4) 设计文档中明确各 repo 的变更职责. 交互探索完成后调用 EnterPlanMode. ⚠️ ExitPlanMode 前必须启动 plan-reviewer sub-agent. 按照 autopilot skill 指引执行."
+        else
+            PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述, 然后立即调用 EnterPlanMode.${MULTI_REPO_HINT} ⚠️ Multi-repo 关键步骤: (1) 在 Plan Mode 内读取 ${REPOS_FILE} 了解可用仓库; (2) 探索各 repo 结构, 确定涉及范围; (3) 用 yq 命令更新 repos.yaml 中对应 repo 的 involved=true; (4) 设计文档中明确各 repo 的变更职责. ⚠️ ExitPlanMode 前必须启动 plan-reviewer sub-agent. 按照 autopilot skill 的 Phase: design + Multi-Repo 模式指引执行."
+        fi
+    elif [[ "$AUTO_APPROVE" == "true" ]]; then
         PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述. auto_approve=true: 跳过 Plan Mode, 直接写设计文档到状态文件. ⚠️ 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案, 参见 references/plan-reviewer-prompt.md. 审查通过则推进到 implement; 失败则回退到正常 Plan Mode (设置 auto_approve: false). 按照 autopilot skill 的 Phase: design 指引执行."
     elif [[ "$PLAN_MODE" == "deep" ]]; then
         PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述. plan_mode=deep: 先执行 Deep Design 交互探索流程（参见 references/deep-design-guide.md），包括项目上下文探索、视觉伴侣征求、逐个澄清问题(AskUserQuestion)、提出 2-3 种方案. 交互探索完成后再调用 EnterPlanMode 写正式设计文档. ⚠️ 在 ExitPlanMode 之前, 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案, 参见 references/plan-reviewer-prompt.md. 审查通过再 ExitPlanMode. 产出物写入 task_dir: $(get_field 'task_dir'). 按照 autopilot skill 的 Phase: design 指引执行."
@@ -248,15 +266,26 @@ if [[ "$PHASE" == "design" ]]; then
         PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述, 然后立即调用 EnterPlanMode 工具进入 Plan Mode. 不要在调用 EnterPlanMode 之前做任何代码探索. 所有探索和设计工作必须在 Plan Mode 内完成. ⚠️ 在 ExitPlanMode 之前, 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案, 参见 references/plan-reviewer-prompt.md. 审查通过再 ExitPlanMode. 按照 autopilot skill 的 Phase: design 指引执行."
     fi
 elif [[ "$PHASE" == "implement" ]]; then
-    PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: implement, 迭代: ${NEXT_ITERATION}. ⚠️ 红蓝对抗铁律: (1) 从状态文件读取设计文档, 检查是否有领域 Skill 委托; (2) 无委托时必须使用 Agent 工具在同一轮响应中同时启动蓝队和红队两个并行 sub-agent (model: sonnet), prompt 模板参见 references/blue-team-prompt.md 和 references/red-team-prompt.md; (3) 红队绝对不能读取蓝队新写的实现代码——红队只看设计文档; (4) 两个 Agent 都完成后合流: 收集产出、写入红队测试文件、更新状态文件. 详细工作流参见 references/implement-phase.md. 按照 autopilot skill 的 Phase: implement 指引执行."
+    if [[ "$MODE" == "multi-repo" ]]; then
+        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: implement, 迭代: ${NEXT_ITERATION}.${MULTI_REPO_HINT} ⚠️ Multi-repo implement 流程: (1) 读取 ${REPOS_FILE} 获取 involved=true 的 repo 列表; (2) 为每个 involved repo 创建 grove worktree: cd <repo_path> && grove --plain add autopilot-${TASK_SLUG:-task} --create, 解析输出最后一行获取 worktree 路径; (3) 用 yq 更新 repos.yaml 中对应 repo 的 worktree 字段; (4) 红蓝对抗: 蓝队和红队 agent prompt 中传入所有 worktree 路径, 蓝队在各 worktree 中编码, 红队仅看设计文档; (5) 合流后更新状态文件. 详细工作流参见 references/implement-phase.md Multi-Repo 章节."
+    else
+        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: implement, 迭代: ${NEXT_ITERATION}. ⚠️ 红蓝对抗铁律: (1) 从状态文件读取设计文档, 检查是否有领域 Skill 委托; (2) 无委托时必须使用 Agent 工具在同一轮响应中同时启动蓝队和红队两个并行 sub-agent (model: sonnet), prompt 模板参见 references/blue-team-prompt.md 和 references/red-team-prompt.md; (3) 红队绝对不能读取蓝队新写的实现代码——红队只看设计文档; (4) 两个 Agent 都完成后合流: 收集产出、写入红队测试文件、更新状态文件. 详细工作流参见 references/implement-phase.md. 按照 autopilot skill 的 Phase: implement 指引执行."
+    fi
 elif [[ "$PHASE" == "qa" ]]; then
-    PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: qa, 迭代: ${NEXT_ITERATION}. ⚠️ Tier 1.5 铁律: (1) 必须执行设计文档中的每一个真实测试场景, 不允许跳过任何场景; (2) 结果判定前先做场景计数匹配——统计报告中执行:标记数量 E 与设计文档场景总数 N, E<N 则有场景被跳过, 必须补做. 按照 autopilot skill 的指引执行当前阶段的工作流."
+    if [[ "$MODE" == "multi-repo" ]]; then
+        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: qa, 迭代: ${NEXT_ITERATION}.${MULTI_REPO_HINT} ⚠️ Multi-repo QA: (1) 读取 ${REPOS_FILE} 获取各 repo 的 worktree 路径; (2) 对每个 worktree 执行 git -C <worktree> diff 聚合变更分析; (3) 测试命令在各 worktree 中分别执行; (4) Tier 1.5 真实场景验证覆盖所有涉及的 repo. 按照 autopilot skill 的指引执行 QA 工作流."
+    else
+        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: qa, 迭代: ${NEXT_ITERATION}. ⚠️ Tier 1.5 铁律: (1) 必须执行设计文档中的每一个真实测试场景, 不允许跳过任何场景; (2) 结果判定前先做场景计数匹配——统计报告中执行:标记数量 E 与设计文档场景总数 N, E<N 则有场景被跳过, 必须补做. 按照 autopilot skill 的指引执行当前阶段的工作流."
+    fi
 elif [[ "$PHASE" == "merge" ]]; then
-    PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: merge, 迭代: ${NEXT_ITERATION}. ⚠️ merge 阶段必须使用 Agent 工具启动 commit-agent (model: sonnet), 参见 references/commit-agent-prompt.md 模板. 不要使用 Skill: autopilot-commit. 完成知识提取后, 用 Edit 设置 knowledge_extracted 为 true 或 skipped, 再设 phase: done. 按照 autopilot skill 的 Phase: merge 指引执行."
+    if [[ "$MODE" == "multi-repo" ]]; then
+        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: merge, 迭代: ${NEXT_ITERATION}.${MULTI_REPO_HINT} ⚠️ Multi-repo merge: (1) 读取 ${REPOS_FILE} 获取各 repo 的 worktree 路径; (2) 对每个有 worktree 的 repo 独立启动 commit-agent (model: sonnet), 每个 agent 只处理该 repo 的 diff; (3) 知识提取: 分析知识与哪个 repo 相关性最大, 写入该 repo worktree 的 .autopilot/ 目录并在 worktree 内 git commit; (4) 所有 repo 提交完成后设 knowledge_extracted, 再设 phase: done. 参见 references/merge-phase.md Multi-Repo 章节."
+    else
+        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: merge, 迭代: ${NEXT_ITERATION}. ⚠️ merge 阶段必须使用 Agent 工具启动 commit-agent (model: sonnet), 参见 references/commit-agent-prompt.md 模板. 不要使用 Skill: autopilot-commit. 完成知识提取后, 用 Edit 设置 knowledge_extracted 为 true 或 skipped, 再设 phase: done. 按照 autopilot skill 的 Phase: merge 指引执行."
+    fi
 else
     PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: ${PHASE}, 迭代: ${NEXT_ITERATION}. 按照 autopilot skill 的指引执行当前阶段的工作流."
 fi
-MODE=$(get_field "mode" || true)
 SYSTEM_MSG="autopilot iteration ${NEXT_ITERATION} | phase: ${PHASE}${MODE:+ | mode: $MODE}"
 
 jq -n \

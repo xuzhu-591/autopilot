@@ -78,6 +78,7 @@ autopilot — AI 自动驾驶工程套件
   --deep                    深度设计模式（交互式 Q&A + 方案对比 + 规格审查）
   --project                 强制项目模式（跳过复杂度检测）
   --single                  强制单任务模式（跳过复杂度检测）
+  --multi-repo              强制多仓库模式（跨 repo 编排）
   --max-iterations <n>      最大迭代次数 (默认: 30)
   --max-retries <n>         单阶段最大重试次数 (默认: 3)
 
@@ -364,6 +365,10 @@ while [[ $# -gt 0 ]]; do
             PLAN_MODE_OVERRIDE="deep"
             shift
             ;;
+        --multi-repo)
+            MODE_OVERRIDE="multi-repo"
+            shift
+            ;;
         *)
             PROMPT_PARTS+=("$1")
             shift
@@ -378,6 +383,42 @@ if [[ -z "$GOAL" ]]; then
     echo "   用法: /autopilot <目标描述>"
     echo "   示例: /autopilot 实现用户头像上传功能"
     exit 0
+fi
+
+# ── Multi-Repo 自动检测 ──────────────────────────────────────
+# 当 CWD 不在 git repo 内，且未指定 --single/--project 时，自动扫描子 repo
+if [[ -z "$MODE_OVERRIDE" ]] && ! git rev-parse --show-toplevel &>/dev/null; then
+    DISCOVERED_REPOS=$(discover_repos)
+    REPO_COUNT=$(echo "$DISCOVERED_REPOS" | grep -c . || true)
+    if [[ "$REPO_COUNT" -gt 0 ]]; then
+        MODE_OVERRIDE="multi-repo"
+        echo "🔍 检测到非 git 目录，发现 ${REPO_COUNT} 个子 git 仓库："
+        echo "$DISCOVERED_REPOS" | while read -r rp; do echo "   - $(basename "$rp") ($rp)"; done
+        echo ""
+    else
+        echo "❌ 当前目录不是 git 仓库，且未发现子 git 仓库。"
+        echo "   请在 git 仓库内运行，或在包含子 git 仓库的目录下运行。"
+        exit 0
+    fi
+elif [[ "$MODE_OVERRIDE" == "multi-repo" ]] && ! git rev-parse --show-toplevel &>/dev/null; then
+    DISCOVERED_REPOS=$(discover_repos)
+    REPO_COUNT=$(echo "$DISCOVERED_REPOS" | grep -c . || true)
+    if [[ "$REPO_COUNT" -eq 0 ]]; then
+        echo "❌ --multi-repo 模式需要子目录中存在 git 仓库。"
+        exit 0
+    fi
+    echo "🔍 Multi-repo 模式，发现 ${REPO_COUNT} 个子 git 仓库："
+    echo "$DISCOVERED_REPOS" | while read -r rp; do echo "   - $(basename "$rp") ($rp)"; done
+    echo ""
+fi
+
+# Multi-repo 模式 yq 依赖检查
+if [[ "$MODE_OVERRIDE" == "multi-repo" ]]; then
+    if ! check_yq; then
+        echo "❌ Multi-repo 模式需要 yq 工具。"
+        echo "   安装: brew install yq"
+        exit 0
+    fi
 fi
 
 # 任务文件自然语言匹配（项目模式下）
@@ -422,6 +463,17 @@ fi
 TASK_SLUG=$(generate_task_slug "$GOAL")
 setup_requirement_dir "$TASK_SLUG"
 
+# Multi-repo: 生成 repos.yaml
+REPOS_FILE_PATH=""
+REPOS_HINT=""
+if [[ "$MODE_OVERRIDE" == "multi-repo" ]]; then
+    echo "$DISCOVERED_REPOS" | generate_repos_yaml
+    REPOS_FILE_PATH=$(get_repos_file)
+    REPOS_HINT="
+> 🗂️ 发现的仓库列表: $REPOS_FILE_PATH
+> design 阶段请分析目标涉及哪些 repo，用 Edit 更新 repos.yaml 的 involved 字段为 true。"
+fi
+
 # Brief 模式：从任务简报文件启动
 if [[ -n "$BRIEF_FILE" ]]; then
     create_brief_state_file "$BRIEF_FILE" "$SESSION_ID" "$MAX_ITERATIONS" "$MAX_RETRIES" "false"
@@ -443,6 +495,7 @@ brief_file: ""
 next_task: ""
 auto_approve: false
 knowledge_extracted: ""
+repos_file: "${REPOS_FILE_PATH}"
 task_dir: "$TASK_DIR"
 session_id: $SESSION_ID
 started_at: "$(now_iso)"
@@ -451,6 +504,7 @@ started_at: "$(now_iso)"
 ## 目标
 $GOAL
 $KNOWLEDGE_HINT
+$REPOS_HINT
 
 ## 设计文档
 (待 design 阶段填充)
@@ -479,6 +533,9 @@ fi
 if [[ -n "$BRIEF_FILE" ]]; then
     DISPLAY_GOAL="任务: $(basename "$BRIEF_FILE" .md)"
     PHASE_FLOW="design → implement → qa → merge (brief 模式)"
+elif [[ "$MODE_OVERRIDE" == "multi-repo" ]]; then
+    DISPLAY_GOAL="$GOAL"
+    PHASE_FLOW="design → grove worktree → implement → qa → per-repo merge"
 elif [[ "$MODE_OVERRIDE" == "project" ]]; then
     DISPLAY_GOAL="$GOAL"
     PHASE_FLOW="design → 复杂度检测 → 架构设计 → DAG 创建 → done"
@@ -498,6 +555,14 @@ cat <<EOF
 最大重试: $MAX_RETRIES
 状态文件: $STATE_FILE ${IS_WORKTREE}
 需求文件夹: $TASK_DIR
+EOF
+
+if [[ "$MODE_OVERRIDE" == "multi-repo" ]]; then
+    echo "Repos 配置: $REPOS_FILE_PATH"
+    echo "发现仓库: ${REPO_COUNT} 个"
+fi
+
+cat <<EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   阶段流程: $PHASE_FLOW
@@ -511,10 +576,13 @@ cat <<EOF
   /autopilot next       查找就绪任务（项目模式）
   /autopilot cancel     取消循环
   /autopilot commit     智能提交（独立使用）
-
-提示: 建议在 worktree 中运行以隔离代码改动
-      claude -w autopilot-xxx 然后 /autopilot <目标>
 EOF
+
+if [[ "$MODE_OVERRIDE" != "multi-repo" ]]; then
+    echo ""
+    echo "提示: 建议在 worktree 中运行以隔离代码改动"
+    echo "      claude -w autopilot-xxx 然后 /autopilot <目标>"
+fi
 
 echo ""
 echo "开始设计阶段。请按照 autopilot skill 的指引，读取 $STATE_FILE 状态文件并执行 design 阶段。"

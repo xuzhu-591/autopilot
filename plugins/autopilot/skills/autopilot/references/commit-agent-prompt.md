@@ -76,6 +76,20 @@ git commit -m "生成的 commit message"
 
 **跳过**：纯代码修改（bug fix/重构/性能优化）、样式/测试/注释变更
 
+## Multi-Repo 模式
+
+Multi-repo 模式下，编排器会为每个 repo 分别启动一个 commit-agent 实例。
+
+**额外输入**：
+- **工作目录**：worktree 绝对路径（所有 git 操作在此目录下执行）
+- **Repo 名称**：用于 commit scope
+
+**行为变更**：
+- 所有 git 命令使用 `git -C <worktree_path>` 执行
+- commit scope 使用 repo 名称（如 `feat(raven): ...`）
+- 版本号升级和 CLAUDE.md 更新在各 repo 独立判断
+- 如果 `git diff` 为空（编排器应已过滤），直接报告"无变更"
+
 ### 5. 报告结果
 
 完成后输出：

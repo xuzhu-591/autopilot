@@ -137,6 +137,43 @@ When running in a git worktree, `.autopilot` should be a symlink to the main rep
 #### Step 3: Normal repo (no worktree)
 `test -d .git` → 正常 git 仓库，使用标准操作：`git add .autopilot/ && git commit -m "docs(knowledge): ..."`
 
+## Multi-Repo Knowledge Extraction
+
+Multi-repo 模式（`mode: "multi-repo"`）下，CWD 不是 git repo，知识不能存储在 CWD。知识路由到最相关的 repo worktree。
+
+### 路由策略
+
+1. 分析每个知识条目的内容（涉及的模块、技术栈、文件路径）
+2. 对照 repos.yaml 中的 involved repos，判断与哪个 repo 关联最大
+3. 写入该 repo **worktree** 的 `.autopilot/` 目录
+
+### 执行步骤
+
+```bash
+# 1. 确定目标 repo 的 worktree 路径（从 repos.yaml 读取）
+TARGET_WT=$(yq -r '.[] | select(.name == "<最相关repo>") | .worktree' repos.yaml)
+
+# 2. 创建知识目录
+mkdir -p "$TARGET_WT/.autopilot/"
+
+# 3. 写入知识文件（decisions.md / patterns.md / index.md）
+# ... 追加条目 ...
+
+# 4. 在 worktree 内提交
+git -C "$TARGET_WT" add .autopilot/
+git -C "$TARGET_WT" commit -m "docs(knowledge): extract {brief summary}"
+```
+
+### 消费（Design 阶段）
+
+Multi-repo design 阶段加载知识时，扫描各 involved repo 的 `.autopilot/` 目录（原始 repo 路径，非 worktree），聚合所有 `index.md` 进行关键词匹配。
+
+### 边界情况
+
+- 跨 repo 的通用知识（如团队约定）→ 写入关联最大的 repo，不需要多副本
+- 某个 repo 无 `.autopilot/` 目录 → `mkdir -p` 创建，首次提取会自动创建 `index.md`
+- 无 involved repo 有变更 → 设 `knowledge_extracted: "skipped"`
+
 ## Domain Partition Guide
 
 当全局文件超过 100 行时，识别可聚合的同领域条目，创建 `domains/{domain}.md`，迁移后更新 `index.md` 中的路径引用，并从全局文件删除已迁移条目。**迁移操作需要用户确认。**

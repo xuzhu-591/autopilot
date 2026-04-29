@@ -239,6 +239,135 @@ $knowledge_hint
 EOF
 }
 
+# ── Multi-Repo 辅助函数 ────────────────────────────────────────
+
+# 检测 yq 是否可用。
+# 返回: 0=可用, 1=不可用
+check_yq() {
+    command -v yq &>/dev/null
+}
+
+# 扫描当前目录下最多 2 层的 git 仓库。
+# 输出: 每行一个 repo 绝对路径（去重排序）
+discover_repos() {
+    find . -maxdepth 2 -name ".git" 2>/dev/null | while IFS= read -r gitdir; do
+        local repo_dir
+        repo_dir="$(cd "$(dirname "$gitdir")" && pwd)"
+        echo "$repo_dir"
+    done | sort -u
+}
+
+# 判断当前状态是否为 multi-repo 模式。
+# 返回: 0=是, 1=否
+is_multi_repo() {
+    local mode
+    mode=$(get_field "mode" || true)
+    [[ "$mode" == "multi-repo" ]]
+}
+
+# 获取 repos.yaml 文件路径。
+# 依赖: TASK_DIR 已初始化
+get_repos_file() {
+    if [[ -n "$TASK_DIR" ]]; then
+        echo "$TASK_DIR/repos.yaml"
+    else
+        echo "$PROJECT_ROOT/.autopilot/repos.yaml"
+    fi
+}
+
+# 获取所有 involved=true 的 repo 信息。
+# 输出: 每行格式 "name<TAB>path<TAB>worktree"
+# 依赖: yq
+get_involved_repos() {
+    local repos_file
+    repos_file=$(get_repos_file)
+    [[ ! -f "$repos_file" ]] && return
+    yq -r '.[] | select(.involved == true) | [.name, .path, .worktree] | @tsv' "$repos_file"
+}
+
+# 获取所有 repo 信息（无论 involved 状态）。
+# 输出: 每行格式 "name<TAB>path<TAB>worktree<TAB>involved"
+get_all_repos() {
+    local repos_file
+    repos_file=$(get_repos_file)
+    [[ ! -f "$repos_file" ]] && return
+    yq -r '.[] | [.name, .path, .worktree, .involved] | @tsv' "$repos_file"
+}
+
+# 为指定 repo 创建 grove worktree。
+# 参数: repo_path branch_name
+# 输出: worktree 绝对路径（从 grove stdout 解析）
+# 返回: 0=成功, 1=失败
+create_grove_worktree() {
+    local repo_path="$1"
+    local branch_name="$2"
+    local output
+    output=$(cd "$repo_path" && grove --plain add "$branch_name" --create 2>&1) || return 1
+    # grove 输出最后一行是 worktree 路径
+    echo "$output" | tail -1
+}
+
+# 更新 repos.yaml 中指定 repo 的字段。
+# 参数: repo_name field_name value
+# 依赖: yq
+set_repo_field() {
+    local repo_name="$1"
+    local field_name="$2"
+    local value="$3"
+    local repos_file
+    repos_file=$(get_repos_file)
+    [[ ! -f "$repos_file" ]] && return 1
+    local temp="${repos_file}.tmp.$$"
+    yq "(.[] | select(.name == \"$repo_name\")).$field_name = \"$value\"" "$repos_file" > "$temp"
+    mv "$temp" "$repos_file"
+}
+
+# 更新 repos.yaml 中指定 repo 的 boolean 字段。
+# 参数: repo_name field_name value(true/false)
+# 依赖: yq
+set_repo_bool() {
+    local repo_name="$1"
+    local field_name="$2"
+    local value="$3"
+    local repos_file
+    repos_file=$(get_repos_file)
+    [[ ! -f "$repos_file" ]] && return 1
+    local temp="${repos_file}.tmp.$$"
+    yq "(.[] | select(.name == \"$repo_name\")).$field_name = $value" "$repos_file" > "$temp"
+    mv "$temp" "$repos_file"
+}
+
+# 生成 repos.yaml 文件。
+# 参数: repo_paths（换行分隔的绝对路径列表，通过 stdin）
+# 输出: 写入 repos.yaml
+generate_repos_yaml() {
+    local repos_file
+    repos_file=$(get_repos_file)
+    mkdir -p "$(dirname "$repos_file")"
+
+    local paths=()
+    while IFS= read -r repo_path; do
+        [[ -z "$repo_path" ]] && continue
+        paths+=("$repo_path")
+    done
+
+    local yq_expr='['
+    local first=true
+    for rp in "${paths[@]}"; do
+        local rn
+        rn=$(basename "$rp")
+        if $first; then
+            first=false
+        else
+            yq_expr="$yq_expr, "
+        fi
+        yq_expr="$yq_expr{\"name\": \"$rn\", \"path\": \"$rp\", \"worktree\": \"\", \"involved\": false}"
+    done
+    yq_expr="$yq_expr]"
+
+    yq -n "$yq_expr" > "$repos_file"
+}
+
 # ── 全项目 QA 状态文件创建 ─────────────────────────────────────
 
 # 所有 DAG 任务完成后，创建全项目 QA 验证状态文件。
