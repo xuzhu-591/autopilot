@@ -28,6 +28,14 @@
 **Choice**: 全部迁移到 `.autopilot/`（与知识库同级），setup.sh 添加旧路径自动迁移逻辑。知识库迁移条件从检查目录存在改为检查 `index.md` 存在（避免 mkdir -p 创建空目录后迁移被跳过的协调 bug）。
 **Alternatives rejected**: (1) PreToolUse Hook 自动 approve（绕过安全机制，不是正解）；(2) 只迁移状态文件（worktree-links 和 doctor-report 同样触发弹窗，不彻底）
 **Trade-offs**: 需要存量用户迁移（setup.sh 自动处理），SKILL.md 中 ~15 处路径引用需同步更新。但一次性迁移后彻底消除权限弹窗，长期收益远大于短期成本。
+
+### [2026-04-29] PID-based Active Pointer 替代单例 active 文件实现多 session 并发
+<!-- tags: autopilot, multi-repo, concurrency, pid, active-pointer -->
+**Background**: multi-repo 模式下多个 Claude Code session 共享同一个 `.autopilot/` 目录，单例 `active` 文件导致同一时刻只能运行一个需求。session_id 方案被否决（POC 证明 `$CLAUDE_CODE_SESSION_ID` 在 setup.sh 和 stop-hook.sh 中均不可用，`$PPID` 则稳定可用）。
+**Choice**: 将 `.autopilot/active`（单例）替换为 `.autopilot/active.<pid>`（每 session 一个），利用 Claude Code 进程 PID（`$PPID`）做天然隔离。路由优先级：`active.$PPID` → `active`（向后兼容 fallback）→ 空。清理机制：`cleanup_active()` 精准清理当前 PID + 兼容单例；`cleanup_stale_actives()` 启动时扫描死 PID 文件。新增 `/autopilot-continue` skill 支持新 session 继续已有需求。
+**Alternatives rejected**: (1) session_id 路由（`$CLAUDE_CODE_SESSION_ID` 环境变量不可靠，stop-hook stdin JSON 中有但非标准化 API）；(2) 锁文件（增加复杂度，进程崩溃后锁残留问题）
+**Trade-offs**: PID 在进程退出后可被 OS 重用，但 `cleanup_stale_actives()` 在每次启动时清理死 PID 文件，窗口期极短。`kill -0` 对其他用户进程有 EPERM 误判，但 autopilot 是单用户场景，低风险。
+
 **Background**: 成本分析显示 autopilot 单日消耗 100M tokens（$809.73），其中 merge 阶段的 Skill: autopilot-commit 调用单次消耗 3-5M tokens——因为在编排器主线程运行，继承了完整的设计文档、QA 报告、所有工具调用历史等父上下文。93.35% 的 tokens 是 cache_read。
 **Choice**: merge 阶段改用 Agent 工具启动 commit-agent（model: sonnet），Agent 获得独立的新鲜上下文窗口，只包含显式传入的 git diff + 设计目标 + commit 规则。同时新增 stop-hook merge 分支注入 Agent 路径提醒。QA 报告压缩：历史轮次压缩为一行摘要，只保留最新完整报告。
 **Alternatives rejected**: SKILL.md 路由器瘦身（572→85 行）——之前尝试过出过问题，不再重复。
