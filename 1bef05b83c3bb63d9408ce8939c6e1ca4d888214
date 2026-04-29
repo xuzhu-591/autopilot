@@ -1,0 +1,56 @@
+plugins/autopilot/scripts/lib.sh
+  6d8e4ba368ccdcce 15,21-31,98,101,324-349
+plugins/autopilot/scripts/setup.sh
+  6d8e4ba368ccdcce 19-22,301,311,315,318,425
+plugins/autopilot/skills/autopilot-continue/SKILL.md
+  6d8e4ba368ccdcce 1-18
+plugins/autopilot/scripts/continue.sh
+  6d8e4ba368ccdcce 1-75
+plugins/autopilot/scripts/stop-hook.sh
+  6d8e4ba368ccdcce 31,121,136,148,153,163,177,186,198,204,222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "1bef05b83c3bb63d9408ce8939c6e1ca4d888214",
+  "prompts": {
+    "6d8e4ba368ccdcce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72963fce-7b8c-4cbc-af21-cf41f60e9b75",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 153,
+      "total_deletions": 20,
+      "accepted_lines": 153,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot-continue/SKILL.md": {
+          "additions": 18,
+          "accepted_lines": 18
+        },
+        "plugins/autopilot/scripts/continue.sh": {
+          "additions": 75,
+          "accepted_lines": 75
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 9,
+          "deletions": 7,
+          "accepted_lines": 9
+        },
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 11,
+          "deletions": 11,
+          "accepted_lines": 11
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 40,
+          "deletions": 2,
+          "accepted_lines": 40
+        }
+      }
+    }
+  }
+}
