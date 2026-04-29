@@ -351,6 +351,11 @@ generate_repos_yaml() {
         paths+=("$repo_path")
     done
 
+    if [[ ${#paths[@]} -eq 0 ]]; then
+        yq -n '[]' > "$repos_file"
+        return
+    fi
+
     local yq_expr='['
     local first=true
     for rp in "${paths[@]}"; do
