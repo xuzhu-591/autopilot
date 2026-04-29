@@ -1,0 +1,43 @@
+plugins/autopilot/scripts/multi-repo.acceptance.test.mjs
+  43a6c40b54a15349 1-501
+plugins/autopilot/scripts/lib.sh
+  43a6c40b54a15349 354-358
+package.json
+  43a6c40b54a15349 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "5a8a0d14a4bbc5cc98209ef60d6024abacca6733",
+  "prompts": {
+    "43a6c40b54a15349": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7ed708c-d4f1-4003-afb3-9d12fdfe93eb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 619,
+      "total_deletions": 113,
+      "accepted_lines": 507,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/scripts/multi-repo.acceptance.test.mjs": {
+          "additions": 613,
+          "deletions": 112,
+          "accepted_lines": 501
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 5,
+          "accepted_lines": 5
+        },
+        "package.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
