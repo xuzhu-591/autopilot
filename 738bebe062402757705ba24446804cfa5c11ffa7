@@ -1,0 +1,80 @@
+plugins/autopilot/scripts/stop-hook.sh
+  43a6c40b54a15349 242-250,252-261,269-273,275-279,281-285
+plugins/autopilot/scripts/setup.sh
+  43a6c40b54a15349 81,368-371,388-423,466-476,498,507,536-538,558-563,565,581-585
+plugins/autopilot/skills/autopilot/references/merge-phase.md
+  43a6c40b54a15349 3-46
+plugins/autopilot/scripts/lib.sh
+  43a6c40b54a15349 242-370
+plugins/autopilot/skills/autopilot/references/knowledge-engineering.md
+  43a6c40b54a15349 140-176
+plugins/autopilot/skills/autopilot/references/state-file-guide.md
+  43a6c40b54a15349 13,39-60
+plugins/autopilot/skills/autopilot/references/implement-phase.md
+  43a6c40b54a15349 3-35
+plugins/autopilot/skills/autopilot/SKILL.md
+  43a6c40b54a15349 59-130,744
+plugins/autopilot/skills/autopilot/references/commit-agent-prompt.md
+  43a6c40b54a15349 79-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "738bebe062402757705ba24446804cfa5c11ffa7",
+  "prompts": {
+    "43a6c40b54a15349": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7ed708c-d4f1-4003-afb3-9d12fdfe93eb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu",
+      "messages": [],
+      "total_additions": 475,
+      "total_deletions": 25,
+      "accepted_lines": 458,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 34,
+          "deletions": 5,
+          "accepted_lines": 34
+        },
+        "plugins/autopilot/skills/autopilot/references/commit-agent-prompt.md": {
+          "additions": 14,
+          "accepted_lines": 14
+        },
+        "plugins/autopilot/skills/autopilot/references/knowledge-engineering.md": {
+          "additions": 37,
+          "accepted_lines": 37
+        },
+        "plugins/autopilot/skills/autopilot/references/implement-phase.md": {
+          "additions": 33,
+          "accepted_lines": 33
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 71,
+          "deletions": 3,
+          "accepted_lines": 71
+        },
+        "plugins/autopilot/skills/autopilot/references/merge-phase.md": {
+          "additions": 44,
+          "accepted_lines": 44
+        },
+        "plugins/autopilot/skills/autopilot/references/state-file-guide.md": {
+          "additions": 23,
+          "accepted_lines": 23
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 146,
+          "deletions": 17,
+          "accepted_lines": 129
+        },
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 73,
+          "accepted_lines": 73
+        }
+      }
+    }
+  }
+}
