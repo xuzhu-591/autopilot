@@ -114,28 +114,38 @@ After autopilot-commit completes, review the full autopilot run to extract knowl
 
 ## Worktree-Aware Extraction
 
-When running in a git worktree, `.autopilot` should be a symlink to the main repo. Use this 3-step detection chain:
+知识提交始终在当前工作分支上，不路由到主仓默认分支。根据 `.autopilot` 是否为符号链接选择提交方式：
 
-#### Step 1: Symlink exists (happy path)
-`test -L .autopilot` → 是符号链接
+#### 分支 1：`.autopilot` 是符号链接（worktree 场景）
 
-- Resolve main repo and commit there:
-  ```bash
-  KNOWLEDGE_REAL=$(realpath .autopilot)
-  MAIN_REPO=$(cd "$KNOWLEDGE_REAL" && git rev-parse --show-toplevel)
-  git -C "$MAIN_REPO" add .autopilot/
-  git -C "$MAIN_REPO" commit -m "docs(knowledge): extract {brief summary}"
-  ```
+`test -L .autopilot` → 是符号链接。`git add .autopilot/` 在符号链接目录下会失败，需要先物化：
 
-#### Step 2: In worktree, symlink missing (fallback + self-heal)
-`test -f .git` → 是 worktree（.git 是文件而非目录），但符号链接缺失
+```bash
+# 1. 记录符号链接目标
+SYMLINK_TARGET=$(readlink .autopilot)
 
-1. 解析主仓库根：`COMMON_DIR=$(git rev-parse --git-common-dir); MAIN_REPO=$(cd "$COMMON_DIR/.." && pwd)`
-2. 复制知识到主仓库并提交：`mkdir -p "$MAIN_REPO/.autopilot/"; cp -r .autopilot/* "$MAIN_REPO/.autopilot/"; git -C "$MAIN_REPO" add .autopilot/; git -C "$MAIN_REPO" commit -m "docs(knowledge): ..."`
-3. 自愈修复符号链接：`rm -rf .autopilot; ln -s "$MAIN_REPO/.autopilot" .autopilot`
+# 2. 物化：符号链接 → 真实目录副本
+cp -rL .autopilot .autopilot-materialized
+rm .autopilot
+mv .autopilot-materialized .autopilot
 
-#### Step 3: Normal repo (no worktree)
-`test -d .git` → 正常 git 仓库，使用标准操作：`git add .autopilot/ && git commit -m "docs(knowledge): ..."`
+# 3. 写入知识文件后提交（在 worktree 分支上）
+git add .autopilot/
+git commit -m "docs(knowledge): extract {brief summary}"
+
+# 4. 恢复符号链接（维持 worktree 状态共享）
+rm -rf .autopilot
+ln -s "$SYMLINK_TARGET" .autopilot
+```
+
+#### 分支 2：`.autopilot` 不是符号链接
+
+普通 repo 或无符号链接的 worktree，直接提交：
+
+```bash
+git add .autopilot/
+git commit -m "docs(knowledge): extract {brief summary}"
+```
 
 ## Multi-Repo Knowledge Extraction
 
