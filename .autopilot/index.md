@@ -23,3 +23,5 @@
 - [2026-04-12] "从缓存同步源码"操作会连带回退不相关的文件改动 | tags: autopilot, cache-sync, regression, stop-hook, source-of-truth | → patterns.md
 - [2026-04-17] SKILL.md 决策树中后置章节会被 AI 跳过 | tags: autopilot, skill, decision-tree, priority, plan-mode, auto-approve | → patterns.md
 - [2026-04-17] Early-exit 守卫阻断后续添加的合法代码路径 | tags: autopilot, stop-hook, guard, early-exit, ordering, knowledge-extracted | → patterns.md
+- [2026-04-30] git add 无法穿透目录级符号链接 | tags: git, symlink, worktree, autopilot, knowledge-engineering | → patterns.md
+- [2026-04-30] stop-hook 字段值守卫可被同 turn 设值绕过 | tags: autopilot, stop-hook, guard, timing, bypass | → patterns.md

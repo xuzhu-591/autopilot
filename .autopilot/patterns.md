@@ -88,3 +88,15 @@
 **Scenario**: stop-hook.sh 的 knowledge_extracted 守卫（v2.8.0）在 phase=done 时检查并 exit 0 回滚到 merge。v3.12.1 在守卫之后添加了 Case 0.5（项目 design auto-chain），但 Case 0.5 永远无法执行——守卫先触发 exit，后续代码全部不可达
 **Lesson**: Shell 脚本中带 `exit 0` 的守卫会创建隐式的顺序依赖：守卫之后添加的任何新路径都需要先通过守卫。新增 phase=done 的合法路径时，必须同步审查所有前置守卫是否需要豁免。检查方法：搜索 `exit 0` 前的条件判断，确认新路径是否被覆盖
 **Evidence**: autopilot.case 行 494 "知识提取回滚" — 项目 design 完成后守卫误触发，Case 0.5 auto-chain 被短路，首个 DAG 任务未自动启动。修复：守卫内增加 mode=project+brief_file="" 和 mode=project-qa 豁免
+
+### [2026-04-30] git add 无法穿透目录级符号链接
+<!-- tags: git, symlink, worktree, autopilot, knowledge-engineering -->
+**Scenario**: Worktree-Aware Extraction 设计为"在 worktree 内 `git add .autopilot/`"，但 worktree 的 `.autopilot` 是指向主仓的符号链接。`git add .autopilot/` 返回 `fatal: pathspec '.autopilot/' is beyond a symbolic link`，exit code 128
+**Lesson**: git 拒绝通过目录级符号链接暂存文件——这是 git 的安全限制，不受 `-f` 或配置影响。在 worktree 场景下需要先物化符号链接（`cp -rL` → `rm` → `mv`），操作完成后恢复。这一限制同样影响 `.gitignore`、`.gitmodules` 等引用路径穿越符号链接的场景
+**Evidence**: 实验验证 `mkdir -p /tmp/test-repo && cd /tmp/test-repo && git init && mkdir real && ln -s real link && touch real/file.txt && git add link/file.txt` → fatal。修复：v3.13.1 Worktree-Aware Extraction 改为两分支物化-提交-恢复逻辑
+
+### [2026-04-30] stop-hook 字段值守卫可被同 turn 设值绕过
+<!-- tags: autopilot, stop-hook, guard, timing, bypass -->
+**Scenario**: stop-hook 的 knowledge_extracted 守卫检查 `!= "true" && != "skipped"` → 回滚。AI 在同一 turn 内先设 `phase: "done"` 再设 `knowledge_extracted: "skipped"`，stop-hook 执行时两个字段都已设好，守卫通过
+**Lesson**: Stop hook 在 turn 之间执行，无法拦截 turn 内的中间状态。仅靠"字段值是否存在"的守卫不够——需要**证据层**验证（如检查变更日志中是否有实际分析记录）。SKILL.md 同时建立契约要求 AI 写入特定文本，形成双向约束
+**Evidence**: 会话 a90442f8 L1153 设 phase=done → L1158 设 knowledge_extracted=skipped → L1165 stop-hook 执行时守卫通过。修复：v3.13.1 新增变更日志区域证据检查
