@@ -113,6 +113,19 @@ if [[ "$PHASE" == "done" ]]; then
         fi
     fi
 
+    # 新增：skipped 但变更日志无证据 → 视为无效
+    if [[ "$KNOWLEDGE_EXTRACTED" == "skipped" ]]; then
+        if ! sed -n '/^## 变更日志/,$ p' "$STATE_FILE" | grep -qE "知识提取|knowledge.extract"; then
+            set_field "phase" '"merge"'
+            NEXT_ITERATION=$((ITERATION + 1))
+            set_field "iteration" "$NEXT_ITERATION"
+            PROMPT="知识提取标记为 skipped 但变更日志中无分析证据。读取 ${STATE_FILE}，按照 autopilot skill Phase: merge 的知识提取与沉淀步骤执行。完成后在变更日志追加知识提取记录，然后设 knowledge_extracted 和 phase: done。"
+            jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_ITERATION} | phase: merge | 知识提取证据缺失回滚" \
+                '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
+            exit 0
+        fi
+    fi
+
     MODE=$(get_field "mode" || true)
 
     # Case 0: project-qa 完成 → 项目完成通知 + 清理 active 指针
