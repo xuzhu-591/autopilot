@@ -14,13 +14,16 @@
         "id": "99ca2d36-d420-40c3-93e7-5f90a1bf30ef",
         "model": "claude-opus-4-6"
       },
-      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "human_author": "Xu Zhu",
       "messages": [],
       "total_additions": 14,
       "total_deletions": 0,
       "accepted_lines": 191,
       "overriden_lines": 0,
       "per_file_stats": {
+        "docs/session-analysis-a90442f8.md": {
+          "accepted_lines": 177
+        },
         ".autopilot/index.md": {
           "additions": 2,
           "accepted_lines": 2
@@ -28,9 +31,6 @@
         ".autopilot/patterns.md": {
           "additions": 12,
           "accepted_lines": 12
-        },
-        "docs/session-analysis-a90442f8.md": {
-          "accepted_lines": 177
         }
       }
     }
