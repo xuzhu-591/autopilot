@@ -1,0 +1,38 @@
+.autopilot/index.md
+  bfbe29bb8e19333b 26-27
+.autopilot/patterns.md
+  bfbe29bb8e19333b 91-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "df8d442433a2479765bc078260b9e8f04268ed67",
+  "prompts": {
+    "bfbe29bb8e19333b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99ca2d36-d420-40c3-93e7-5f90a1bf30ef",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 0,
+      "accepted_lines": 191,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        ".autopilot/index.md": {
+          "additions": 2,
+          "accepted_lines": 2
+        },
+        ".autopilot/patterns.md": {
+          "additions": 12,
+          "accepted_lines": 12
+        },
+        "docs/session-analysis-a90442f8.md": {
+          "accepted_lines": 177
+        }
+      }
+    }
+  }
+}
