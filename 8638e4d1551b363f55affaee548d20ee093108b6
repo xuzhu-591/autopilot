@@ -1,0 +1,35 @@
+.autopilot/decisions.md
+  6d8e4ba368ccdcce 31-38
+.autopilot/index.md
+  6d8e4ba368ccdcce 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "a52cbb26c0e0ad5e633f71e259eb9f0477e72eaa",
+  "prompts": {
+    "6d8e4ba368ccdcce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72963fce-7b8c-4cbc-af21-cf41f60e9b75",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        ".autopilot/decisions.md": {
+          "additions": 8,
+          "accepted_lines": 8
+        },
+        ".autopilot/index.md": {
+          "additions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
