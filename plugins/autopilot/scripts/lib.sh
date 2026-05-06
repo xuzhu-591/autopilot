@@ -13,6 +13,7 @@ TASK_DIR=""
 init_paths() {
     local target_cwd="${1:-}"
     local caller_pid="${2:-$PPID}"
+    local strict="${3:-false}"
     if [[ -n "$target_cwd" ]] && [[ -d "$target_cwd" ]]; then
         cd "$target_cwd" || return
     fi
@@ -28,7 +29,14 @@ init_paths() {
         return
     fi
 
-    # 向后兼容：旧格式单例 active
+    # strict 模式：仅 PID 路由，不回退（stop-hook 使用，防止跨 session 劫持）
+    if [[ "$strict" == "true" ]]; then
+        STATE_FILE=""
+        TASK_DIR=""
+        return
+    fi
+
+    # 向后兼容：旧格式单例 active（仅用于用户主动命令如 status/cancel/approve）
     local active_file="$PROJECT_ROOT/.autopilot/active"
     if [[ -f "$active_file" ]]; then
         local slug
