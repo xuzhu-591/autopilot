@@ -1,0 +1,44 @@
+plugins/autopilot/scripts/setup.sh
+  e0e8a6a492fc9ef3 74,94,310-411,682
+plugins/autopilot/scripts/stop-hook.sh
+  e0e8a6a492fc9ef3 30-31,33-34
+plugins/autopilot/scripts/lib.sh
+  e0e8a6a492fc9ef3 16,32-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "98c895785ed3f326b343f867306f95ad234a3d5d",
+  "prompts": {
+    "e0e8a6a492fc9ef3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ea51dc3-0baa-4e4b-9409-7d66f43e59e7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 119,
+      "total_deletions": 6,
+      "accepted_lines": 118,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 9,
+          "deletions": 1,
+          "accepted_lines": 9
+        },
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 4,
+          "deletions": 4,
+          "accepted_lines": 4
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 106,
+          "deletions": 1,
+          "accepted_lines": 105
+        }
+      }
+    }
+  }
+}
