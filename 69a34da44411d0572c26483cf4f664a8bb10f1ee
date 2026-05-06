@@ -1,0 +1,26 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "69a34da44411d0572c26483cf4f664a8bb10f1ee",
+  "prompts": {
+    "bfbe29bb8e19333b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99ca2d36-d420-40c3-93e7-5f90a1bf30ef",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 177,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "docs/session-analysis-a90442f8.md": {
+          "accepted_lines": 177
+        }
+      }
+    }
+  }
+}
