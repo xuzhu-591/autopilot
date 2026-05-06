@@ -27,11 +27,11 @@ source "$SCRIPT_DIR/lib.sh"
 HOOK_INPUT=$(timeout 5 cat 2>/dev/null || true)
 HOOK_CWD=$(echo "$HOOK_INPUT" | jq -r '.cwd // ""' 2>/dev/null || true)
 
-# 用 stdin 的 cwd 初始化路径（为空时 fallback 到当前 CWD）
-init_paths "$HOOK_CWD" "$PPID"
+# 用 stdin 的 cwd 初始化路径（strict=true: 仅 PID 路由，不劫持无关 session）
+init_paths "$HOOK_CWD" "$PPID" "true"
 
-# 状态文件不存在时直接放行
-if [[ ! -f "$STATE_FILE" ]]; then
+# 状态文件不存在时直接放行（strict 模式下无 active.$PID 即为空）
+if [[ -z "$STATE_FILE" ]] || [[ ! -f "$STATE_FILE" ]]; then
     exit 0
 fi
 

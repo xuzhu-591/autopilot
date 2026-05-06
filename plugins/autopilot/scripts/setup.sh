@@ -71,6 +71,7 @@ autopilot — AI 自动驾驶工程套件
   /autopilot <任务ID>                    匹配项目任务文件，brief 模式执行
   /autopilot commit                      智能提交（React 优化 + 代码测验）
   /autopilot doctor [--fix]              工程健康度诊断（评估 autopilot 兼容性）
+  /autopilot continue [编号|slug]        恢复之前未完成的任务到当前 session
   /autopilot approve [反馈]              批准当前审批门
   /autopilot revise <反馈>               要求修改
   /autopilot status                      查看状态（有项目时显示 DAG）
@@ -90,6 +91,7 @@ autopilot — AI 自动驾驶工程套件
   /autopilot --deep 设计新的推荐算法架构
   /autopilot --project 复刻 Happy 到 Raven 生态
   /autopilot 001-wire-schema
+  /autopilot continue
   /autopilot next
   /autopilot commit
   /autopilot doctor
@@ -303,6 +305,108 @@ HELP_EOF
         echo "🛑 autopilot 已取消，active 指针已清理。"
         [[ -n "$TASK_DIR" ]] && echo "   需求文件夹保留在: $TASK_DIR"
         echo "   代码改动仍保留在工作目录中，可通过 git 查看。"
+        exit 0
+        ;;
+
+    continue|cont)
+        # 恢复之前未完成的任务到当前 session
+        REQ_DIR="$PROJECT_ROOT/.autopilot/requirements"
+        if [[ ! -d "$REQ_DIR" ]]; then
+            echo "📋 没有历史任务可恢复。"
+            exit 0
+        fi
+
+        # 扫描未完成且无活跃 PID 的任务
+        CANDIDATES=()
+        while IFS= read -r state_file; do
+            [[ -f "$state_file" ]] || continue
+            slug=$(basename "$(dirname "$state_file")")
+            phase=$(sed -n 's/^phase: *"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$state_file")
+            [[ "$phase" == "done" ]] && continue
+            [[ -z "$phase" ]] && continue
+
+            # 检查是否有活跃的 PID 指针
+            has_live_pid=false
+            for pf in "$PROJECT_ROOT/.autopilot"/active.*; do
+                [[ -f "$pf" ]] || continue
+                pid_suffix="${pf##*.}"
+                [[ "$pid_suffix" =~ ^[0-9]+$ ]] || continue
+                pf_slug=$(cat "$pf")
+                if [[ "$pf_slug" == "$slug" ]] && kill -0 "$pid_suffix" 2>/dev/null; then
+                    has_live_pid=true
+                    break
+                fi
+            done
+
+            if [[ "$has_live_pid" == "false" ]]; then
+                CANDIDATES+=("$slug|$phase|$state_file")
+            fi
+        done < <(find "$REQ_DIR" -maxdepth 2 -name "state.md" 2>/dev/null | sort -r)
+
+        if [[ ${#CANDIDATES[@]} -eq 0 ]]; then
+            echo "📋 没有可恢复的任务（所有任务已完成或正在其他会话中运行）。"
+            exit 0
+        fi
+
+        # 如果指定了编号或 slug
+        TARGET="${2:-}"
+        SELECTED=""
+
+        if [[ -n "$TARGET" ]]; then
+            if [[ "$TARGET" =~ ^[0-9]+$ ]] && [[ "$TARGET" -ge 1 ]] && [[ "$TARGET" -le ${#CANDIDATES[@]} ]]; then
+                SELECTED="${CANDIDATES[$((TARGET - 1))]}"
+            else
+                for c in "${CANDIDATES[@]}"; do
+                    IFS='|' read -r c_slug _ _ <<< "$c"
+                    if [[ "$c_slug" == *"$TARGET"* ]]; then
+                        SELECTED="$c"
+                        break
+                    fi
+                done
+            fi
+            if [[ -z "$SELECTED" ]]; then
+                echo "❌ 未找到匹配的任务: $TARGET"
+                echo ""
+            fi
+        fi
+
+        # 未指定或未匹配 → 展示列表
+        if [[ -z "$SELECTED" ]]; then
+            if [[ ${#CANDIDATES[@]} -eq 1 ]]; then
+                SELECTED="${CANDIDATES[0]}"
+            else
+                echo "可恢复的任务："
+                for i in "${!CANDIDATES[@]}"; do
+                    IFS='|' read -r c_slug c_phase c_sf <<< "${CANDIDATES[$i]}"
+                    goal=$(sed -n '/^## 目标/,/^## /{/^## 目标/d;/^## /d;/^$/d;p;}' "$c_sf" | head -1)
+                    echo "  $((i + 1)). [$c_phase] $c_slug"
+                    [[ -n "$goal" ]] && echo "      $goal"
+                done
+                echo ""
+                echo "用法: /autopilot continue <编号或slug关键字>"
+                exit 0
+            fi
+        fi
+
+        # 执行恢复
+        IFS='|' read -r sel_slug sel_phase _ <<< "$SELECTED"
+        TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$sel_slug"
+        STATE_FILE="$TASK_DIR/state.md"
+
+        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active.$PPID"
+        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active"
+
+        # 更新 session_id
+        SESSION_ID="${CLAUDE_CODE_SESSION_ID:-}"
+        if [[ -n "$SESSION_ID" ]]; then
+            set_field "session_id" "$SESSION_ID"
+        fi
+
+        echo "✅ 已恢复任务: $sel_slug"
+        echo "   阶段: $sel_phase"
+        echo "   状态文件: $STATE_FILE"
+        echo ""
+        echo "循环将在下次停止时自动继续。"
         exit 0
         ;;
 esac
@@ -575,6 +679,7 @@ cat <<EOF
   /autopilot approve    批准当前审批门
   /autopilot revise     要求修改
   /autopilot status     查看状态
+  /autopilot continue   恢复之前未完成的任务
   /autopilot next       查找就绪任务（项目模式）
   /autopilot cancel     取消循环
   /autopilot commit     智能提交（独立使用）
