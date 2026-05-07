@@ -146,7 +146,6 @@ test_1_1_intercept_skipped_without_evidence() {
 
     # 设置 active 指针
     echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active.$$"
-    echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active"
 
     # 创建状态文件: phase=done, knowledge_extracted=skipped, 变更日志无"知识提取"
     create_state_file "$state_file" "done" "skipped" \
@@ -185,7 +184,6 @@ test_1_2_pass_skipped_with_evidence() {
     local state_file="$TEST_TMPDIR/repo/.autopilot/requirements/test-task/state.md"
 
     echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active.$$"
-    echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active"
 
     # 变更日志含"知识提取"文本
     create_state_file "$state_file" "done" "skipped" \
@@ -218,7 +216,6 @@ test_1_3_false_positive_prevention() {
     local state_file="$TEST_TMPDIR/repo/.autopilot/requirements/test-task/state.md"
 
     echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active.$$"
-    echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active"
 
     # 设计文档区域含"知识提取"，但变更日志区域不含
     create_state_file "$state_file" "done" "skipped" \
@@ -258,7 +255,6 @@ test_1_4_english_keyword_evidence() {
     local state_file="$TEST_TMPDIR/repo/.autopilot/requirements/test-task/state.md"
 
     echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active.$$"
-    echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active"
 
     create_state_file "$state_file" "done" "skipped" \
         "- [2026-04-30T00:00:00Z] autopilot 初始化
@@ -286,7 +282,6 @@ test_1_5_true_still_passes() {
     local state_file="$TEST_TMPDIR/repo/.autopilot/requirements/test-task/state.md"
 
     echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active.$$"
-    echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active"
 
     # knowledge_extracted=true，变更日志无需包含证据
     create_state_file "$state_file" "done" "true" \
@@ -313,7 +308,6 @@ test_1_6_empty_still_triggers_old_guard() {
     local state_file="$TEST_TMPDIR/repo/.autopilot/requirements/test-task/state.md"
 
     echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active.$$"
-    echo "test-task" > "$TEST_TMPDIR/repo/.autopilot/active"
 
     # knowledge_extracted 为空
     create_state_file "$state_file" "done" "" \

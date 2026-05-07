@@ -36,13 +36,48 @@ init_paths() {
         return
     fi
 
-    # 向后兼容：旧格式单例 active（仅用于用户主动命令如 status/cancel/approve）
-    local active_file="$PROJECT_ROOT/.autopilot/active"
-    if [[ -f "$active_file" ]]; then
-        local slug
-        slug=$(cat "$active_file")
-        TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$slug"
-        STATE_FILE="$TASK_DIR/state.md"
+    # 扫描 requirements/ 中唯一活跃且未被其他 PID 持有的任务，自动绑定
+    local req_dir="$PROJECT_ROOT/.autopilot/requirements"
+    if [[ -d "$req_dir" ]]; then
+        # 收集已被活跃 PID 持有的 slug
+        local held_slugs=""
+        for af in "$PROJECT_ROOT/.autopilot"/active.*; do
+            [[ -f "$af" ]] || continue
+            local af_pid="${af##*.}"
+            [[ "$af_pid" =~ ^[0-9]+$ ]] || continue
+            if kill -0 "$af_pid" 2>/dev/null; then
+                held_slugs="${held_slugs}|$(cat "$af")"
+            fi
+        done
+
+        # 扫描未完成且未被持有的任务
+        local candidates=()
+        local candidate_dirs=()
+        while IFS= read -r sf; do
+            [[ -f "$sf" ]] || continue
+            local sf_phase
+            sf_phase=$(sed -n 's/^phase: *"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$sf")
+            [[ "$sf_phase" == "done" || -z "$sf_phase" ]] && continue
+            local sf_slug
+            sf_slug=$(basename "$(dirname "$sf")")
+            # 跳过已被其他 PID 持有的
+            if [[ -n "$held_slugs" ]] && echo "$held_slugs" | grep -qF "|$sf_slug"; then
+                continue
+            fi
+            candidates+=("$sf_slug")
+            candidate_dirs+=("$(dirname "$sf")")
+        done < <(find "$req_dir" -maxdepth 2 -name "state.md" 2>/dev/null | sort -r)
+
+        if [[ ${#candidates[@]} -eq 1 ]]; then
+            # 唯一活跃任务，自动绑定
+            echo "${candidates[0]}" > "$PROJECT_ROOT/.autopilot/active.$caller_pid"
+            TASK_DIR="${candidate_dirs[0]}"
+            STATE_FILE="$TASK_DIR/state.md"
+        else
+            # 0 或多个候选，无法自动绑定
+            STATE_FILE=""
+            TASK_DIR=""
+        fi
     else
         STATE_FILE="$PROJECT_ROOT/.autopilot/autopilot.local.md"
         TASK_DIR=""
@@ -107,7 +142,6 @@ setup_requirement_dir() {
     TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$slug"
     mkdir -p "$TASK_DIR"
     echo "$slug" > "$PROJECT_ROOT/.autopilot/active.$caller_pid"
-    echo "$slug" > "$PROJECT_ROOT/.autopilot/active"
     STATE_FILE="$TASK_DIR/state.md"
 }
 
@@ -471,13 +505,6 @@ EOF
 cleanup_active() {
     local pid="${1:-$PPID}"
     rm -f "$PROJECT_ROOT/.autopilot/active.$pid"
-    local current_slug
-    current_slug=$(basename "$TASK_DIR" 2>/dev/null || true)
-    if [[ -n "$current_slug" ]] && [[ -f "$PROJECT_ROOT/.autopilot/active" ]]; then
-        local active_slug
-        active_slug=$(cat "$PROJECT_ROOT/.autopilot/active")
-        [[ "$active_slug" == "$current_slug" ]] && rm -f "$PROJECT_ROOT/.autopilot/active"
-    fi
 }
 
 # 清理过期的 active 文件（PID 不存在的）
@@ -488,4 +515,6 @@ cleanup_stale_actives() {
         [[ "$pid" =~ ^[0-9]+$ ]] || continue
         kill -0 "$pid" 2>/dev/null || rm -f "$f"
     done
+    # 清理残留的单例 active 文件（已废弃）
+    rm -f "$PROJECT_ROOT/.autopilot/active"
 }

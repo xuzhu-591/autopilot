@@ -51,7 +51,6 @@ if [[ -n "$CHOICE" ]] && [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
         TASK_DIR="$REQ_DIR/$selected_slug"
         STATE_FILE="$TASK_DIR/state.md"
         echo "$selected_slug" > "$PROJECT_ROOT/.autopilot/active.$PPID"
-        echo "$selected_slug" > "$PROJECT_ROOT/.autopilot/active"
         echo "✅ 已绑定需求: $selected_slug"
         echo "   阶段: ${PHASES[$IDX]}"
         echo "   状态文件: $STATE_FILE"

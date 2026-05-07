@@ -23,7 +23,7 @@ cleanup_stale_actives
 
 # ── 早期迁移：.claude/autopilot.local.md → .autopilot/ 旧格式检测 ──
 # 旧版状态文件在 .autopilot/autopilot.local.md（无 active 指针），需要检测处理
-if [[ -f "$PROJECT_ROOT/.autopilot/autopilot.local.md" ]] && [[ ! -f "$PROJECT_ROOT/.autopilot/active" ]]; then
+if [[ -f "$PROJECT_ROOT/.autopilot/autopilot.local.md" ]]; then
     OLD_PHASE=$(get_field "phase" 2>/dev/null || true)
     if [[ "$OLD_PHASE" == "done" || -z "$OLD_PHASE" ]]; then
         rm -f "$PROJECT_ROOT/.autopilot/autopilot.local.md"
@@ -35,7 +35,7 @@ if [[ -f "$PROJECT_ROOT/.autopilot/autopilot.local.md" ]] && [[ ! -f "$PROJECT_R
     fi
 fi
 # 从 .claude/ 迁移的旧逻辑保留兼容
-if [[ -f "$PROJECT_ROOT/.claude/autopilot.local.md" ]] && [[ ! -f "$PROJECT_ROOT/.autopilot/active" ]]; then
+if [[ -f "$PROJECT_ROOT/.claude/autopilot.local.md" ]]; then
     mkdir -p "$PROJECT_ROOT/.autopilot"
     rm -f "$PROJECT_ROOT/.claude/autopilot.local.md"
     echo "🧹 清理了 .claude/ 下的旧状态文件。"
@@ -125,7 +125,7 @@ HELP_EOF
 
     approve)
         if [[ ! -f "$STATE_FILE" ]]; then
-            echo "❌ 没有活跃的 autopilot。使用 /autopilot <目标> 启动新循环。"
+            echo "❌ 当前 session 未绑定任务。使用 /autopilot continue 绑定已有任务，或 /autopilot <目标> 启动新循环。"
             exit 0
         fi
         GATE=$(get_field "gate")
@@ -155,7 +155,7 @@ HELP_EOF
 
     revise)
         if [[ ! -f "$STATE_FILE" ]]; then
-            echo "❌ 没有活跃的 autopilot。"
+            echo "❌ 当前 session 未绑定任务。使用 /autopilot continue 绑定已有任务，或 /autopilot <目标> 启动新循环。"
             exit 0
         fi
         GATE=$(get_field "gate")
@@ -212,6 +212,34 @@ HELP_EOF
             echo "开始时间: $STARTED"
             [[ -n "$MODE" ]] && echo "模式:     $MODE"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        else
+            # 无 PID 绑定，扫描所有活跃任务
+            REQ_DIR="$PROJECT_ROOT/.autopilot/requirements"
+            if [[ -d "$REQ_DIR" ]]; then
+                ACTIVE_TASKS=()
+                while IFS= read -r sf; do
+                    [[ -f "$sf" ]] || continue
+                    phase=$(sed -n 's/^phase: *"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' "$sf")
+                    [[ "$phase" == "done" || -z "$phase" ]] && continue
+                    slug=$(basename "$(dirname "$sf")")
+                    goal=$(sed -n '/^## 目标/,/^## /{/^## 目标/d;/^## /d;/^$/d;p;}' "$sf" | head -1)
+                    ACTIVE_TASKS+=("$slug|$phase|${goal:-(无描述)}")
+                done < <(find "$REQ_DIR" -maxdepth 2 -name "state.md" 2>/dev/null | sort -r)
+
+                if [[ ${#ACTIVE_TASKS[@]} -gt 0 ]]; then
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    echo "  活跃任务列表（当前 session 未绑定）"
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    for i in "${!ACTIVE_TASKS[@]}"; do
+                        IFS='|' read -r t_slug t_phase t_goal <<< "${ACTIVE_TASKS[$i]}"
+                        echo "  $((i + 1)). [$t_phase] $t_slug"
+                        echo "     $t_goal"
+                    done
+                    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    echo ""
+                    echo "💡 使用 /autopilot continue <编号> 绑定到当前 session"
+                fi
+            fi
         fi
         # 项目 DAG 状态（无论是否有活跃 autopilot 都尝试显示）
         DAG_FILE="$PROJECT_ROOT/.autopilot/project/dag.yaml"
@@ -297,7 +325,7 @@ HELP_EOF
 
     cancel)
         if [[ ! -f "$STATE_FILE" ]]; then
-            echo "📋 没有活跃的 autopilot。"
+            echo "❌ 当前 session 未绑定任务。使用 /autopilot continue 绑定已有任务，或 /autopilot <目标> 启动新循环。"
             exit 0
         fi
         # 仅移除 active 指针，requirements 文件夹保留作为历史归档
@@ -394,7 +422,6 @@ HELP_EOF
         STATE_FILE="$TASK_DIR/state.md"
 
         echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active.$PPID"
-        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active"
 
         # 更新 session_id
         SESSION_ID="${CLAUDE_CODE_SESSION_ID:-}"
