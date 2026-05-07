@@ -1,0 +1,78 @@
+plugins/autopilot/.claude-plugin/plugin.json
+  0db25e5e9405c52a 3
+.claude-plugin/marketplace.json
+  0db25e5e9405c52a 32
+CLAUDE.md
+  0db25e5e9405c52a 51,296-306
+tests/deprecate-active-singleton.acceptance.test.sh
+  0db25e5e9405c52a 1-541
+plugins/autopilot/scripts/lib.sh
+  0db25e5e9405c52a 39-80,518-519
+plugins/autopilot/scripts/setup.sh
+  0db25e5e9405c52a 26,38,128,158,215-242,328
+plugins/autopilot/skills/autopilot/SKILL.md
+  0db25e5e9405c52a 10,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "039de58d6181d42878ce34c191408db66ab52e7f",
+  "prompts": {
+    "0db25e5e9405c52a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f50f1f7-64b9-4198-ac3b-ed412296671d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 843,
+      "total_deletions": 242,
+      "accepted_lines": 634,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 2,
+          "deletions": 2,
+          "accepted_lines": 2
+        },
+        "tests/deprecate-active-singleton.acceptance.test.sh": {
+          "additions": 749,
+          "deletions": 208,
+          "accepted_lines": 541
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 33,
+          "deletions": 6,
+          "accepted_lines": 33
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "CLAUDE.md": {
+          "additions": 12,
+          "deletions": 1,
+          "accepted_lines": 12
+        },
+        "plugins/autopilot/scripts/continue.sh": {
+          "deletions": 1
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 45,
+          "deletions": 16,
+          "accepted_lines": 44
+        },
+        "tests/stop-hook-knowledge-guard.acceptance.test.sh": {
+          "deletions": 6
+        }
+      }
+    }
+  }
+}
