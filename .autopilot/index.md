@@ -6,6 +6,7 @@
 - [2026-03-27] SKILL.md Phase 分片优于状态文件索引 | tags: autopilot, skill, progressive-disclosure, token-optimization | → decisions.md
 - [2026-04-03] merge 阶段 Agent 化优于 Skill 调用 | tags: autopilot, token-optimization, merge, agent, cost | → decisions.md
 - [2026-04-10] 运行时文件统一迁移到 .autopilot/ 而非逐个豁免 | tags: autopilot, file-path, permission, claude-code, migration | → decisions.md
+- [2026-05-07] 彻底废弃 active 单例，init_paths() 改用扫描自动绑定 | tags: autopilot, multi-repo, concurrency, pid, singleton-deprecation | → decisions.md
 - [2026-04-29] PID-based Active Pointer 替代单例 active 文件实现多 session 并发 | tags: autopilot, multi-repo, concurrency, pid, active-pointer | → decisions.md
 
 ## Patterns
