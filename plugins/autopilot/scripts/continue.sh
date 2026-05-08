@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # autopilot-continue 初始化脚本
-# 扫描未完成需求，用户选择后写入 active.$PPID 指针
+# 扫描未完成需求，用户选择后写入 active.$CLAUDE_PID 指针
 
 set -uo pipefail
 
 source "$(dirname "$0")/lib.sh"
-init_paths "" "$PPID"
+init_paths "" "$CLAUDE_PID"
 
 REQ_DIR="$PROJECT_ROOT/.autopilot/requirements"
 
@@ -50,7 +50,7 @@ if [[ -n "$CHOICE" ]] && [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
         selected_slug="${SLUGS[$IDX]}"
         TASK_DIR="$REQ_DIR/$selected_slug"
         STATE_FILE="$TASK_DIR/state.md"
-        echo "$selected_slug" > "$PROJECT_ROOT/.autopilot/active.$PPID"
+        echo "$selected_slug" > "$PROJECT_ROOT/.autopilot/active.$CLAUDE_PID"
         echo "✅ 已绑定需求: $selected_slug"
         echo "   阶段: ${PHASES[$IDX]}"
         echo "   状态文件: $STATE_FILE"

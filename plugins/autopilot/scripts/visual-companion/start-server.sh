@@ -99,13 +99,17 @@ fi
 
 cd "$SCRIPT_DIR" || exit 1
 
-# Resolve the harness PID (grandparent of this script).
-# $PPID is the ephemeral shell the harness spawned to run us — it dies
-# when this script exits. The harness itself is $PPID's parent.
-OWNER_PID="$(ps -o ppid= -p "$PPID" 2>/dev/null | tr -d ' ')"
-if [[ -z "$OWNER_PID" || "$OWNER_PID" == "1" ]]; then
-  OWNER_PID="$PPID"
-fi
+# Resolve the Claude Code process PID by walking the process tree upward.
+_pid=$$
+OWNER_PID="$PPID"
+while [ "$_pid" -gt 1 ]; do
+  _cmd=$(ps -o comm= -p "$_pid" 2>/dev/null) || break
+  if echo "$_cmd" | grep -qi "claude"; then
+    OWNER_PID="$_pid"
+    break
+  fi
+  _pid=$(ps -o ppid= -p "$_pid" 2>/dev/null | tr -d ' ')
+done
 
 # Foreground mode for environments that reap detached/background processes.
 if [[ "$FOREGROUND" == "true" ]]; then
