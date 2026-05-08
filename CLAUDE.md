@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.16.0)
+### 3. autopilot (v3.17.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
@@ -294,7 +294,18 @@
 ## 更新日志
 
 ### 2026-05-08
-- autopilot 升级至 v3.15.0：集成 get_claude_pid() 进程树遍历，解决 $PPID 在不同调用链中不稳定的问题
+- autopilot 升级至 v3.17.0：用 session ID 替代 PID 路由 active 指针，解决 resume 后 PID 变化导致任务丢失的问题
+  - lib.sh 新增 `get_claude_session_id()`：三级降级链（sessions/<PID>.json → $CLAUDE_CODE_SESSION_ID → pid-<N> fallback）
+  - lib.sh 新增 `_session_is_alive()`：检查 session 文件是否存在，替代 kill -0 PID 检查；支持 pid-N fallback 格式
+  - lib.sh 新增 `CLAUDE_SESSION_ID` 全局变量：source 时自动初始化
+  - active 指针文件格式从 `active.<PID>` 改为 `active.session.<UUID>`
+  - `init_paths()`：新增旧格式兼容迁移（读到 `active.<PID>` 自动升级为 `active.session.<UUID>` 并删除旧文件）
+  - `cleanup_active()`：同时清理新旧两种格式
+  - `cleanup_stale_actives()`：新格式用 `_session_is_alive` 检查，旧格式继续用 kill -0（兼容过渡期）
+  - `setup_requirement_dir()`：写入新格式 active 指针
+  - setup.sh resume 路径：active 写入改为新格式，session_id 更新改用 `$CLAUDE_SESSION_ID`
+  - continue.sh：active 写入改为新格式
+- autopilot 升级至 v3.16.0（今日早些时候）：集成 get_claude_pid() 进程树遍历，解决 $PPID 在不同调用链中不稳定的问题
   - lib.sh 新增 get_claude_pid() 函数：沿进程树向上遍历找到 Claude Code 主进程 PID
   - 新增 CLAUDE_PID 全局变量：source lib.sh 时自动初始化，替代所有 $PPID 引用
   - setup.sh/continue.sh/stop-hook.sh：所有 $PPID 引用替换为 $CLAUDE_PID

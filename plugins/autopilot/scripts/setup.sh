@@ -353,20 +353,30 @@ HELP_EOF
             [[ "$phase" == "done" ]] && continue
             [[ -z "$phase" ]] && continue
 
-            # 检查是否有活跃的 PID 指针
-            has_live_pid=false
+            # 检查是否有活跃的 session 或 PID 指针持有该 slug
+            has_live_holder=false
             for pf in "$PROJECT_ROOT/.autopilot"/active.*; do
                 [[ -f "$pf" ]] || continue
-                pid_suffix="${pf##*.}"
-                [[ "$pid_suffix" =~ ^[0-9]+$ ]] || continue
+                pf_suffix="${pf##*/active.}"
                 pf_slug=$(cat "$pf")
-                if [[ "$pf_slug" == "$slug" ]] && kill -0 "$pid_suffix" 2>/dev/null; then
-                    has_live_pid=true
-                    break
+                [[ "$pf_slug" == "$slug" ]] || continue
+                if [[ "$pf_suffix" == session.* ]]; then
+                    # 新格式：检查 session 是否存活
+                    sid="${pf_suffix#session.}"
+                    if _session_is_alive "$sid"; then
+                        has_live_holder=true
+                        break
+                    fi
+                elif [[ "$pf_suffix" =~ ^[0-9]+$ ]]; then
+                    # 旧格式：检查 PID 是否存活
+                    if kill -0 "$pf_suffix" 2>/dev/null; then
+                        has_live_holder=true
+                        break
+                    fi
                 fi
             done
 
-            if [[ "$has_live_pid" == "false" ]]; then
+            if [[ "$has_live_holder" == "false" ]]; then
                 CANDIDATES+=("$slug|$phase|$state_file")
             fi
         done < <(find "$REQ_DIR" -maxdepth 2 -name "state.md" 2>/dev/null | sort -r)
@@ -421,13 +431,10 @@ HELP_EOF
         TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$sel_slug"
         STATE_FILE="$TASK_DIR/state.md"
 
-        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active.$CLAUDE_PID"
+        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active.session.$CLAUDE_SESSION_ID"
 
-        # 更新 session_id
-        SESSION_ID="${CLAUDE_CODE_SESSION_ID:-}"
-        if [[ -n "$SESSION_ID" ]]; then
-            set_field "session_id" "$SESSION_ID"
-        fi
+        # 更新状态文件中的 session_id（resume 时 session 可能变化）
+        set_field "session_id" "$CLAUDE_SESSION_ID"
 
         echo "✅ 已恢复任务: $sel_slug"
         echo "   阶段: $sel_phase"
