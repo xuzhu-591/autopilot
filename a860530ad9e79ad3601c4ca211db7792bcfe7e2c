@@ -1,0 +1,37 @@
+plugins/autopilot/skills/autopilot/SKILL.md
+  f3956cfe05c793d7 31-39
+plugins/autopilot/scripts/stop-hook.sh
+  f3956cfe05c793d7 198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "a860530ad9e79ad3601c4ca211db7792bcfe7e2c",
+  "prompts": {
+    "f3956cfe05c793d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "757e55d4-d475-4272-85b2-d62e1b18ac29",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 4,
+      "accepted_lines": 10,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 9,
+          "deletions": 3,
+          "accepted_lines": 9
+        }
+      }
+    }
+  }
+}
