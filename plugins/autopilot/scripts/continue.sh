@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # autopilot-continue 初始化脚本
-# 扫描未完成需求，用户选择后写入 active.$CLAUDE_PID 指针
+# 扫描未完成需求，用户选择后写入 active.session.<SESSION_ID> 指针
 
 set -uo pipefail
 
@@ -50,7 +50,7 @@ if [[ -n "$CHOICE" ]] && [[ "$CHOICE" =~ ^[0-9]+$ ]]; then
         selected_slug="${SLUGS[$IDX]}"
         TASK_DIR="$REQ_DIR/$selected_slug"
         STATE_FILE="$TASK_DIR/state.md"
-        echo "$selected_slug" > "$PROJECT_ROOT/.autopilot/active.$CLAUDE_PID"
+        echo "$selected_slug" > "$PROJECT_ROOT/.autopilot/active.session.$CLAUDE_SESSION_ID"
         echo "✅ 已绑定需求: $selected_slug"
         echo "   阶段: ${PHASES[$IDX]}"
         echo "   状态文件: $STATE_FILE"
