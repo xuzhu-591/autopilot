@@ -195,7 +195,7 @@ if [[ "$PHASE" == "done" ]]; then
         RESULT=$(get_first_ready_task "$DAG_FILE")
         if [[ "$RESULT" == "ALL_DONE" ]]; then
             # 全部完成 → 启动全项目 QA，创建新的 requirements 文件夹
-            qa_slug=$(generate_task_slug "全项目集成QA验证")
+            qa_slug=$(generate_task_slug "project-integration-qa")
             setup_requirement_dir "$qa_slug" "$CLAUDE_PID"
             create_project_qa_state_file "$HOOK_SESSION"
             bash "$SCRIPT_DIR/notify.sh" project-qa 2>/dev/null || true
