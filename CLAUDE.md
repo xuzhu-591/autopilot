@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.15.0)
+### 3. autopilot (v3.16.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
