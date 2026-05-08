@@ -1,0 +1,79 @@
+plugins/autopilot/scripts/lib.sh
+  0db25e5e9405c52a 13-30,33,159,522,524
+plugins/autopilot/.claude-plugin/plugin.json
+  0db25e5e9405c52a 3
+plugins/autopilot/scripts/continue.sh
+  0db25e5e9405c52a 4,9,53
+CLAUDE.md
+  0db25e5e9405c52a 51,296-303
+plugins/autopilot/scripts/stop-hook.sh
+  0db25e5e9405c52a 31,134,149,161,166,176,190,199,211,217,235
+plugins/autopilot/scripts/setup.sh
+  0db25e5e9405c52a 19,332,424,447,597
+plugins/autopilot/scripts/visual-companion/start-server.sh
+  0db25e5e9405c52a 102-112
+.claude-plugin/marketplace.json
+  0db25e5e9405c52a 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "8cbb7f2ca6a6332074369395b4f36f212af83ca6",
+  "prompts": {
+    "0db25e5e9405c52a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0f50f1f7-64b9-4198-ac3b-ed412296671d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 63,
+      "total_deletions": 33,
+      "accepted_lines": 63,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/scripts/continue.sh": {
+          "additions": 3,
+          "deletions": 3,
+          "accepted_lines": 3
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 22,
+          "deletions": 4,
+          "accepted_lines": 22
+        },
+        "CLAUDE.md": {
+          "additions": 9,
+          "deletions": 1,
+          "accepted_lines": 9
+        },
+        "plugins/autopilot/scripts/visual-companion/start-server.sh": {
+          "additions": 11,
+          "deletions": 7,
+          "accepted_lines": 11
+        },
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 11,
+          "deletions": 11,
+          "accepted_lines": 11
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 5,
+          "deletions": 5,
+          "accepted_lines": 5
+        }
+      }
+    }
+  }
+}
