@@ -29,6 +29,13 @@
 **Alternatives rejected**: (1) PreToolUse Hook 自动 approve（绕过安全机制，不是正解）；(2) 只迁移状态文件（worktree-links 和 doctor-report 同样触发弹窗，不彻底）
 **Trade-offs**: 需要存量用户迁移（setup.sh 自动处理），SKILL.md 中 ~15 处路径引用需同步更新。但一次性迁移后彻底消除权限弹窗，长期收益远大于短期成本。
 
+### [2026-05-07] 彻底废弃 active 单例，init_paths() 改用扫描自动绑定
+<!-- tags: autopilot, multi-repo, concurrency, pid, active-pointer, singleton-deprecation -->
+**Background**: v3.13.x 中 `init_paths()` 保留了 `active`（单例）向后兼容 fallback，导致同目录多任务并行仍然失败——新 session 触发 autopilot 时回退读到旧任务的 `active` 文件，无法启动新任务。
+**Choice**: 彻底移除 `active` 单例的读写：`init_paths()` fallback 从读 `active` 改为扫描 `requirements/*/state.md` 找唯一未绑定活跃任务自动写 `active.$PID`；`setup_requirement_dir()` 和 `continue.sh` 不再写 `active`；`cleanup_stale_actives()` 启动时主动清理残留 `active` 文件。`status` 无绑定时列出所有活跃任务。
+**Alternatives rejected**: 继续保留单例作为 fallback（无法解决多任务并行问题，是根因本身）；session_id 路由（`$CLAUDE_CODE_SESSION_ID` 在 setup.sh 中不可用）
+**Trade-offs**: `kill -0` 在 macOS 对系统 PID（init/launchd）返回 EPERM 而非 0，因此红队测试不能用 PID 1 来模拟"存活进程"，改用 `$$`（当前 shell PID）代替。单用户场景下 EPERM 风险可接受。
+
 ### [2026-04-29] PID-based Active Pointer 替代单例 active 文件实现多 session 并发
 <!-- tags: autopilot, multi-repo, concurrency, pid, active-pointer -->
 **Background**: multi-repo 模式下多个 Claude Code session 共享同一个 `.autopilot/` 目录，单例 `active` 文件导致同一时刻只能运行一个需求。session_id 方案被否决（POC 证明 `$CLAUDE_CODE_SESSION_ID` 在 setup.sh 和 stop-hook.sh 中均不可用，`$PPID` 则稳定可用）。

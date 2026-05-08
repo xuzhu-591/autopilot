@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.12.8)
+### 3. autopilot (v3.14.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
@@ -292,6 +292,17 @@
 ---
 
 ## 更新日志
+
+### 2026-05-07
+- autopilot 升级至 v3.14.0：废弃 active 单例文件，统一 PID 路由，实现同目录多任务并行
+  - lib.sh init_paths()：移除 `.autopilot/active` 回退分支，替换为扫描 requirements/ 自动绑定唯一活跃任务逻辑
+  - lib.sh setup_requirement_dir()：不再写入 `active` 单例文件
+  - lib.sh cleanup_active()：不再条件删除 `active` 单例
+  - lib.sh cleanup_stale_actives()：启动时主动清理残留 `active` 文件
+  - setup.sh continue/approve/cancel/revise：移除 `active` 写入，增强无绑定时提示
+  - setup.sh status：无 PID 绑定时扫描列出所有活跃任务
+  - continue.sh：移除 `active` 写入
+  - 新增 10 个红队验收测试覆盖并行隔离场景
 
 ### 2026-04-23
 - autopilot 升级至 v3.12.8：修复 design 阶段 plan-reviewer 被静默跳过的 bug
