@@ -1,0 +1,44 @@
+.claude-plugin/marketplace.json
+  f3956cfe05c793d7 32
+CLAUDE.md
+  f3956cfe05c793d7 51
+plugins/autopilot/.claude-plugin/plugin.json
+  f3956cfe05c793d7 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "4e38330066a2ab5bb72866d52ef6e6e1e21674f6",
+  "prompts": {
+    "f3956cfe05c793d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "757e55d4-d475-4272-85b2-d62e1b18ac29",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 3,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "CLAUDE.md": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
