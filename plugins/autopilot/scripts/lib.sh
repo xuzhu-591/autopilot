@@ -10,9 +10,27 @@ PROJECT_ROOT=""
 STATE_FILE=""
 TASK_DIR=""
 
+# 沿进程树向上遍历，找到 Claude Code 主进程 PID（命令名含 "claude"）。
+# 解决 $PPID 在不同调用链（Bash tool / skill preprocessing / hook）中指向不同中间进程的问题。
+get_claude_pid() {
+    local pid=$$
+    while [ "$pid" -gt 1 ]; do
+        local cmd
+        cmd=$(ps -o comm= -p "$pid" 2>/dev/null) || break
+        if echo "$cmd" | grep -qi "claude"; then
+            echo "$pid"
+            return 0
+        fi
+        pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+    done
+    echo "$PPID"
+}
+
+CLAUDE_PID="$(get_claude_pid)"
+
 init_paths() {
     local target_cwd="${1:-}"
-    local caller_pid="${2:-$PPID}"
+    local caller_pid="${2:-$CLAUDE_PID}"
     local strict="${3:-false}"
     if [[ -n "$target_cwd" ]] && [[ -d "$target_cwd" ]]; then
         cd "$target_cwd" || return
@@ -138,7 +156,7 @@ generate_task_slug() {
 # 副作用: 更新 TASK_DIR, STATE_FILE 全局变量；写入 active 指针
 setup_requirement_dir() {
     local slug="$1"
-    local caller_pid="${2:-$PPID}"
+    local caller_pid="${2:-$CLAUDE_PID}"
     TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$slug"
     mkdir -p "$TASK_DIR"
     echo "$slug" > "$PROJECT_ROOT/.autopilot/active.$caller_pid"
@@ -501,9 +519,9 @@ EOF
 # ── Active 指针清理 ──────────────────────────────────────────────
 
 # 清理当前 session 的 active 指针
-# 参数: pid (可选，默认 $PPID)
+# 参数: pid (可选，默认 $CLAUDE_PID)
 cleanup_active() {
-    local pid="${1:-$PPID}"
+    local pid="${1:-$CLAUDE_PID}"
     rm -f "$PROJECT_ROOT/.autopilot/active.$pid"
 }
 

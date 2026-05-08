@@ -16,7 +16,7 @@ set -uo pipefail
 # 非零退出码会阻止整个 skill 加载。所有错误通过 stdout 输出让 AI 处理。
 
 source "$(dirname "$0")/lib.sh"
-init_paths "" "$PPID"
+init_paths "" "$CLAUDE_PID"
 
 # 启动时清理过期的 active 文件（PID 不存在的）
 cleanup_stale_actives
@@ -329,7 +329,7 @@ HELP_EOF
             exit 0
         fi
         # 仅移除 active 指针，requirements 文件夹保留作为历史归档
-        cleanup_active "$PPID"
+        cleanup_active "$CLAUDE_PID"
         echo "🛑 autopilot 已取消，active 指针已清理。"
         [[ -n "$TASK_DIR" ]] && echo "   需求文件夹保留在: $TASK_DIR"
         echo "   代码改动仍保留在工作目录中，可通过 git 查看。"
@@ -421,7 +421,7 @@ HELP_EOF
         TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$sel_slug"
         STATE_FILE="$TASK_DIR/state.md"
 
-        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active.$PPID"
+        echo "$sel_slug" > "$PROJECT_ROOT/.autopilot/active.$CLAUDE_PID"
 
         # 更新 session_id
         SESSION_ID="${CLAUDE_CODE_SESSION_ID:-}"
@@ -444,7 +444,7 @@ esac
 if [[ -f "$STATE_FILE" ]]; then
     EXISTING_PHASE=$(get_field "phase" || true)
     if [[ "$EXISTING_PHASE" == "done" ]]; then
-        cleanup_active "$PPID"
+        cleanup_active "$CLAUDE_PID"
         echo "🧹 清理了上一次已完成的 autopilot active 指针。"
     else
         echo "❌ 当前会话已有活跃的 autopilot 在运行（阶段: ${EXISTING_PHASE:-unknown}）。"
@@ -594,7 +594,7 @@ fi
 
 # 生成 task slug 并创建 requirements 文件夹
 TASK_SLUG=$(generate_task_slug "$GOAL")
-setup_requirement_dir "$TASK_SLUG" "$PPID"
+setup_requirement_dir "$TASK_SLUG" "$CLAUDE_PID"
 
 # Multi-repo: 生成 repos.yaml
 REPOS_FILE_PATH=""

@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.14.0)
+### 3. autopilot (v3.15.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
@@ -292,6 +292,14 @@
 ---
 
 ## 更新日志
+
+### 2026-05-08
+- autopilot 升级至 v3.15.0：集成 get_claude_pid() 进程树遍历，解决 $PPID 在不同调用链中不稳定的问题
+  - lib.sh 新增 get_claude_pid() 函数：沿进程树向上遍历找到 Claude Code 主进程 PID
+  - 新增 CLAUDE_PID 全局变量：source lib.sh 时自动初始化，替代所有 $PPID 引用
+  - setup.sh/continue.sh/stop-hook.sh：所有 $PPID 引用替换为 $CLAUDE_PID
+  - visual-companion/start-server.sh：单层 ps 逻辑替换为完整进程树遍历
+  - 效果：同一 Claude Code 会话在 skill preprocessing / Bash tool / hook 三种调用链下产生一致的 PID
 
 ### 2026-05-07
 - autopilot 升级至 v3.14.0：废弃 active 单例文件，统一 PID 路由，实现同目录多任务并行
