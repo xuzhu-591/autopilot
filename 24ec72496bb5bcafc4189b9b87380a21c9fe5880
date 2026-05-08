@@ -1,0 +1,72 @@
+plugins/autopilot/scripts/setup.sh
+  2f13d141be5aeea4 356-357,360,362-375,379,434,436-437
+plugins/autopilot/scripts/stop-hook.sh
+  2f13d141be5aeea4 33
+plugins/autopilot/.claude-plugin/plugin.json
+  2f13d141be5aeea4 3
+plugins/autopilot/scripts/continue.sh
+  2f13d141be5aeea4 4,53
+plugins/autopilot/scripts/lib.sh
+  2f13d141be5aeea4 31-88,98-110,115-117,123,130,133,137-151,166,175-176,241,245-246,249,608,612-616,620-621,625-634
+.claude-plugin/marketplace.json
+  2f13d141be5aeea4 32
+CLAUDE.md
+  2f13d141be5aeea4 51,297-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "24ec72496bb5bcafc4189b9b87380a21c9fe5880",
+  "prompts": {
+    "2f13d141be5aeea4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6511a11e-abda-4f65-b46a-dd5823e6d762",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 156,
+      "total_deletions": 38,
+      "accepted_lines": 156,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 21,
+          "deletions": 14,
+          "accepted_lines": 21
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 117,
+          "deletions": 17,
+          "accepted_lines": 117
+        },
+        "plugins/autopilot/scripts/continue.sh": {
+          "additions": 2,
+          "deletions": 2,
+          "accepted_lines": 2
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "CLAUDE.md": {
+          "additions": 13,
+          "deletions": 2,
+          "accepted_lines": 13
+        },
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
