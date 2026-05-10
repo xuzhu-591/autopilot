@@ -1,0 +1,79 @@
+plugins/autopilot/scripts/lib.sh
+  a0baafabcaefbe63 13-15,30-33,35-39,41-43,55-56,59,63,82,89-92,96-98,100,106,116,118,120-121,145,210,214,576-577,579,585,587-588
+plugins/autopilot/scripts/stop-hook.sh
+  a0baafabcaefbe63 29,31-34,36-37,52,54,126,141,153,158,168,182,191,203,209,227
+plugins/autopilot/scripts/setup.sh
+  a0baafabcaefbe63 20-29,340,355,364,366,370-373,452,598,613,634
+plugins/autopilot/scripts/continue.sh
+  a0baafabcaefbe63 9-16
+plugins/autopilot/.claude-plugin/plugin.json
+  a0baafabcaefbe63 3
+plugins/autopilot/skills/autopilot/SKILL.md
+  a0baafabcaefbe63 10,29,36
+.claude-plugin/marketplace.json
+  a0baafabcaefbe63 32
+CLAUDE.md
+  a0baafabcaefbe63 51,296-308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "0087497cd25be8a1e161189ee4f9ff9dd9f2c24e",
+  "prompts": {
+    "a0baafabcaefbe63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af7caf75-95c5-4566-9572-6c117df5efc4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 111,
+      "total_deletions": 153,
+      "accepted_lines": 111,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 3,
+          "deletions": 3,
+          "accepted_lines": 3
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 22,
+          "deletions": 28,
+          "accepted_lines": 22
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/scripts/continue.sh": {
+          "additions": 8,
+          "deletions": 1,
+          "accepted_lines": 8
+        },
+        "CLAUDE.md": {
+          "additions": 14,
+          "deletions": 1,
+          "accepted_lines": 14
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 42,
+          "deletions": 90,
+          "accepted_lines": 42
+        },
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 20,
+          "deletions": 28,
+          "accepted_lines": 20
+        }
+      }
+    }
+  }
+}
