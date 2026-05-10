@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.17.0)
+### 3. autopilot (v3.18.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
@@ -292,6 +292,19 @@
 ---
 
 ## 更新日志
+
+### 2026-05-11
+- autopilot 升级至 v3.18.0：简化 session 路由，移除所有 PID 兼容逻辑
+  - 路由键统一为 `active.session.<SESSION_ID>`，移除 `active`（单例）、`active.<PID>`、`pid-*` 格式
+  - `get_claude_session_id()`：简化为两级查找（env var → PID 查 sessions 文件），获取不到则 return 1
+  - `_get_claude_pid()`：保留为内部辅助（仅供 session ID 查找使用），不再对外暴露
+  - 移除 `CLAUDE_PID` 全局变量，全部使用 `CLAUDE_SESSION_ID`
+  - `_session_is_alive()`：移除 `pid-*` 分支，仅处理 UUID 格式
+  - `init_paths()`：移除 PID 兼容路由和旧格式迁移逻辑
+  - `cleanup_stale_actives()`：移除 PID 格式和单例文件清理
+  - setup.sh/continue.sh：启动时检查 session ID，获取不到则中断
+  - stop-hook.sh：移除首次认领逻辑，session 隔离简化为单条 guard
+  - SKILL.md：3 处 `active.{PID}` 引用更新为 `active.session.{SESSION_ID}`
 
 ### 2026-05-08
 - autopilot 升级至 v3.17.0：用 session ID 替代 PID 路由 active 指针，解决 resume 后 PID 变化导致任务丢失的问题

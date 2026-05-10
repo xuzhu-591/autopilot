@@ -26,9 +26,15 @@ source "$SCRIPT_DIR/lib.sh"
 
 HOOK_INPUT=$(timeout 5 cat 2>/dev/null || true)
 HOOK_CWD=$(echo "$HOOK_INPUT" | jq -r '.cwd // ""' 2>/dev/null || true)
+HOOK_SESSION=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null || true)
 
-# 用 stdin 的 cwd 初始化路径（strict=true: 仅 PID 路由，不劫持无关 session）
-init_paths "$HOOK_CWD" "$CLAUDE_PID" "true"
+# Session ID 是路由的唯一标识，获取不到则放行
+if [[ -z "$HOOK_SESSION" ]]; then
+    exit 0
+fi
+
+# 用 stdin 的 cwd + session_id 初始化路径（strict=true: 仅 session 路由，不劫持无关 session）
+init_paths "$HOOK_CWD" "$HOOK_SESSION" "true"
 
 # 状态文件不存在时直接放行（strict 模式下无 active.session.<ID> 即为空）
 if [[ -z "$STATE_FILE" ]] || [[ ! -f "$STATE_FILE" ]]; then
@@ -43,23 +49,9 @@ ITERATION=$(get_field "iteration" || true)
 MAX_ITERATIONS=$(get_field "max_iterations" || true)
 STATE_SESSION=$(get_field "session_id" || true)
 
-# ── 3. Session 隔离（Ralph 兼容 + 首次认领） ──
+# ── 3. Session 隔离 ──
 
-HOOK_SESSION=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null || true)
-
-# Guard 1: 空 STATE_SESSION → 首次认领
-# setup.sh 在 CLAUDE_CODE_SESSION_ID 不可用时写入空值（与 ralph 一致）。
-# 首次 Stop hook 触发时，用真实 session_id 认领状态文件，建立隔离。
-if [[ -z "$STATE_SESSION" ]]; then
-    if [[ -n "$HOOK_SESSION" ]]; then
-        set_field "session_id" "$HOOK_SESSION"
-        STATE_SESSION="$HOOK_SESSION"
-        # 继续执行，不 exit — session 已认领
-    fi
-    # HOOK_SESSION 也为空时继续执行（与 ralph 的空值跳过隔离一致）
-fi
-
-# Guard 2: 非空且不匹配 → 不同会话，放行
+# Guard: 非空且不匹配 → 不同会话，放行
 if [[ -n "$STATE_SESSION" ]] && [[ "$STATE_SESSION" != "$HOOK_SESSION" ]]; then
     exit 0
 fi
@@ -131,7 +123,7 @@ if [[ "$PHASE" == "done" ]]; then
     # Case 0: project-qa 完成 → 项目完成通知 + 清理 active 指针
     if [[ "$MODE" == "project-qa" ]]; then
         bash "$SCRIPT_DIR/notify.sh" project-complete 2>/dev/null || true
-        cleanup_active "$CLAUDE_PID"
+        cleanup_active "$HOOK_SESSION"
         exit 0
     fi
 
@@ -146,7 +138,7 @@ if [[ "$PHASE" == "done" ]]; then
             TASK_FILE="$PROJECT_ROOT/.autopilot/project/tasks/${FIRST_READY}.md"
             if [[ -f "$TASK_FILE" ]]; then
                 new_slug=$(generate_task_slug "$FIRST_READY")
-                setup_requirement_dir "$new_slug" "$CLAUDE_PID"
+                setup_requirement_dir "$new_slug" "$HOOK_SESSION"
                 TASK_FILE_ABS=$(cd "$(dirname "$TASK_FILE")" && pwd)/$(basename "$TASK_FILE")
                 create_brief_state_file "$TASK_FILE_ABS" "$HOOK_SESSION" "30" "3" "true"
                 bash "$SCRIPT_DIR/notify.sh" auto-chain 2>/dev/null || true
@@ -158,12 +150,12 @@ if [[ "$PHASE" == "done" ]]; then
                 # 落入下方 block JSON 构造
             else
                 bash "$SCRIPT_DIR/notify.sh" project-design-complete 2>/dev/null || true
-                cleanup_active "$CLAUDE_PID"
+                cleanup_active "$HOOK_SESSION"
                 exit 0
             fi
         else
             bash "$SCRIPT_DIR/notify.sh" project-design-complete 2>/dev/null || true
-            cleanup_active "$CLAUDE_PID"
+            cleanup_active "$HOOK_SESSION"
             exit 0
         fi
 
@@ -173,7 +165,7 @@ if [[ "$PHASE" == "done" ]]; then
         if [[ -f "$TASK_FILE" ]]; then
             # 为新任务创建新的 requirements 文件夹
             new_slug=$(generate_task_slug "$NEXT_TASK")
-            setup_requirement_dir "$new_slug" "$CLAUDE_PID"
+            setup_requirement_dir "$new_slug" "$HOOK_SESSION"
             TASK_FILE_ABS=$(cd "$(dirname "$TASK_FILE")" && pwd)/$(basename "$TASK_FILE")
             create_brief_state_file "$TASK_FILE_ABS" "$HOOK_SESSION" "30" "3" "true"
             bash "$SCRIPT_DIR/notify.sh" auto-chain 2>/dev/null || true
@@ -187,7 +179,7 @@ if [[ "$PHASE" == "done" ]]; then
         else
             echo "⚠️  autopilot: next_task file not found: ${TASK_FILE}" >&2
             bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
-            cleanup_active "$CLAUDE_PID"
+            cleanup_active "$HOOK_SESSION"
             exit 0
         fi
     # Case 2: 项目子任务完成 + 无 next_task → 检查是否全部完成
@@ -196,7 +188,7 @@ if [[ "$PHASE" == "done" ]]; then
         if [[ "$RESULT" == "ALL_DONE" ]]; then
             # 全部完成 → 启动全项目 QA，创建新的 requirements 文件夹
             qa_slug=$(generate_task_slug "project-integration-qa")
-            setup_requirement_dir "$qa_slug" "$CLAUDE_PID"
+            setup_requirement_dir "$qa_slug" "$HOOK_SESSION"
             create_project_qa_state_file "$HOOK_SESSION"
             bash "$SCRIPT_DIR/notify.sh" project-qa 2>/dev/null || true
             echo "🏁 所有任务已完成，启动全项目 QA" >&2
@@ -208,13 +200,13 @@ if [[ "$PHASE" == "done" ]]; then
         else
             # 还有任务但 AI 未信号高信心 → 释放，等用户操作
             bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
-            cleanup_active "$CLAUDE_PID"
+            cleanup_active "$HOOK_SESSION"
             exit 0
         fi
     # Case 3: 单任务模式 → 正常清理（保留 requirements 文件夹，移除 active 指针）
     else
         bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
-        cleanup_active "$CLAUDE_PID"
+        cleanup_active "$HOOK_SESSION"
         exit 0
     fi
 fi
@@ -232,7 +224,7 @@ fi
 if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
     echo "🛑 autopilot: 达到最大迭代次数 ($MAX_ITERATIONS)。" >&2
     bash "$SCRIPT_DIR/notify.sh" error 2>/dev/null || true
-    cleanup_active "$CLAUDE_PID"
+    cleanup_active "$HOOK_SESSION"
     exit 0
 fi
 
