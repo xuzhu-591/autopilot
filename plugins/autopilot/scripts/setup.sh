@@ -16,9 +16,17 @@ set -uo pipefail
 # 非零退出码会阻止整个 skill 加载。所有错误通过 stdout 输出让 AI 处理。
 
 source "$(dirname "$0")/lib.sh"
-init_paths "" "$CLAUDE_PID"
 
-# 启动时清理过期的 active 文件（PID 不存在的）
+# Session ID 是路由的唯一标识，获取不到则中断
+if [[ -z "$CLAUDE_SESSION_ID" ]]; then
+    echo "❌ 无法获取 Session ID（CLAUDE_CODE_SESSION_ID 环境变量未设置，~/.claude/sessions/ 中也未找到）。"
+    echo "   请确认 Claude Code 版本支持 session ID。"
+    exit 0
+fi
+
+init_paths "" "$CLAUDE_SESSION_ID"
+
+# 启动时清理过期的 active 文件
 cleanup_stale_actives
 
 # ── 早期迁移：.claude/autopilot.local.md → .autopilot/ 旧格式检测 ──
@@ -329,7 +337,7 @@ HELP_EOF
             exit 0
         fi
         # 仅移除 active 指针，requirements 文件夹保留作为历史归档
-        cleanup_active "$CLAUDE_PID"
+        cleanup_active "$CLAUDE_SESSION_ID"
         echo "🛑 autopilot 已取消，active 指针已清理。"
         [[ -n "$TASK_DIR" ]] && echo "   需求文件夹保留在: $TASK_DIR"
         echo "   代码改动仍保留在工作目录中，可通过 git 查看。"
@@ -344,7 +352,7 @@ HELP_EOF
             exit 0
         fi
 
-        # 扫描未完成且无活跃 PID 的任务
+        # 扫描未完成且无活跃 session 持有的任务
         CANDIDATES=()
         while IFS= read -r state_file; do
             [[ -f "$state_file" ]] || continue
@@ -353,26 +361,16 @@ HELP_EOF
             [[ "$phase" == "done" ]] && continue
             [[ -z "$phase" ]] && continue
 
-            # 检查是否有活跃的 session 或 PID 指针持有该 slug
+            # 检查是否有活跃的 session 指针持有该 slug
             has_live_holder=false
-            for pf in "$PROJECT_ROOT/.autopilot"/active.*; do
+            for pf in "$PROJECT_ROOT/.autopilot"/active.session.*; do
                 [[ -f "$pf" ]] || continue
-                pf_suffix="${pf##*/active.}"
                 pf_slug=$(cat "$pf")
                 [[ "$pf_slug" == "$slug" ]] || continue
-                if [[ "$pf_suffix" == session.* ]]; then
-                    # 新格式：检查 session 是否存活
-                    sid="${pf_suffix#session.}"
-                    if _session_is_alive "$sid"; then
-                        has_live_holder=true
-                        break
-                    fi
-                elif [[ "$pf_suffix" =~ ^[0-9]+$ ]]; then
-                    # 旧格式：检查 PID 是否存活
-                    if kill -0 "$pf_suffix" 2>/dev/null; then
-                        has_live_holder=true
-                        break
-                    fi
+                sid="${pf##*/active.session.}"
+                if _session_is_alive "$sid"; then
+                    has_live_holder=true
+                    break
                 fi
             done
 
@@ -451,7 +449,7 @@ esac
 if [[ -f "$STATE_FILE" ]]; then
     EXISTING_PHASE=$(get_field "phase" || true)
     if [[ "$EXISTING_PHASE" == "done" ]]; then
-        cleanup_active "$CLAUDE_PID"
+        cleanup_active "$CLAUDE_SESSION_ID"
         echo "🧹 清理了上一次已完成的 autopilot active 指针。"
     else
         echo "❌ 当前会话已有活跃的 autopilot 在运行（阶段: ${EXISTING_PHASE:-unknown}）。"
@@ -576,10 +574,6 @@ fi
 # 创建需求管理文件夹
 mkdir -p "$PROJECT_ROOT/.autopilot"
 
-# session_id：与 ralph 一致，直接使用环境变量（可能为空）。
-# 空值时由 stop-hook 首次触发时认领真实 session_id，建立隔离。
-SESSION_ID="${CLAUDE_CODE_SESSION_ID:-}"
-
 # 迁移检测：旧路径 .claude/knowledge/ → 新路径 .autopilot/
 # 注意：检查 .autopilot/index.md 而非 .autopilot/ 目录，因为上面 mkdir -p 已创建该目录
 if [[ -d "$PROJECT_ROOT/.claude/knowledge" ]] && [[ ! -f "$PROJECT_ROOT/.autopilot/index.md" ]]; then
@@ -601,7 +595,7 @@ fi
 
 # 生成 task slug 并创建 requirements 文件夹
 TASK_SLUG=$(generate_task_slug "$GOAL")
-setup_requirement_dir "$TASK_SLUG" "$CLAUDE_PID"
+setup_requirement_dir "$TASK_SLUG" "$CLAUDE_SESSION_ID"
 
 # Multi-repo: 生成 repos.yaml
 REPOS_FILE_PATH=""
@@ -616,7 +610,7 @@ fi
 
 # Brief 模式：从任务简报文件启动
 if [[ -n "$BRIEF_FILE" ]]; then
-    create_brief_state_file "$BRIEF_FILE" "$SESSION_ID" "$MAX_ITERATIONS" "$MAX_RETRIES" "false"
+    create_brief_state_file "$BRIEF_FILE" "$CLAUDE_SESSION_ID" "$MAX_ITERATIONS" "$MAX_RETRIES" "false"
 
 else
     # 正常模式状态文件
@@ -637,7 +631,7 @@ auto_approve: false
 knowledge_extracted: ""
 repos_file: "${REPOS_FILE_PATH}"
 task_dir: "$TASK_DIR"
-session_id: $SESSION_ID
+session_id: $CLAUDE_SESSION_ID
 started_at: "$(now_iso)"
 ---
 

@@ -6,7 +6,14 @@
 set -uo pipefail
 
 source "$(dirname "$0")/lib.sh"
-init_paths "" "$CLAUDE_PID"
+
+# Session ID 是路由的唯一标识，获取不到则中断
+if [[ -z "$CLAUDE_SESSION_ID" ]]; then
+    echo "❌ 无法获取 Session ID（CLAUDE_CODE_SESSION_ID 环境变量未设置，~/.claude/sessions/ 中也未找到）。"
+    exit 0
+fi
+
+init_paths "" "$CLAUDE_SESSION_ID"
 
 REQ_DIR="$PROJECT_ROOT/.autopilot/requirements"
 

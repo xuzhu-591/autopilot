@@ -10,9 +10,9 @@ PROJECT_ROOT=""
 STATE_FILE=""
 TASK_DIR=""
 
-# 沿进程树向上遍历，找到 Claude Code 主进程 PID（命令名含 "claude"）。
-# 解决 $PPID 在不同调用链（Bash tool / skill preprocessing / hook）中指向不同中间进程的问题。
-get_claude_pid() {
+# ── 内部辅助：通过进程树找到 Claude Code 主进程 PID ──────────────
+# 仅供 get_claude_session_id() 内部使用，不对外暴露。
+_get_claude_pid() {
     local pid=$$
     while [ "$pid" -gt 1 ]; do
         local cmd
@@ -26,17 +26,21 @@ get_claude_pid() {
     echo "$PPID"
 }
 
-CLAUDE_PID="$(get_claude_pid)"
-
 # 获取当前 Claude Code 会话的 session ID。
-# 优先级（层层兜底）：
-#   1. ~/.claude/sessions/<CLAUDE_PID>.json 中的 sessionId 字段（最可靠，resume 后稳定）
-#   2. $CLAUDE_CODE_SESSION_ID 环境变量（某些调用链可能存在）
-#   3. "pid-<CLAUDE_PID>"（终极 fallback，退化为旧行为）
+# 优先级：
+#   1. $CLAUDE_CODE_SESSION_ID 环境变量
+#   2. ~/.claude/sessions/<PID>.json 中的 sessionId 字段（通过进程树找 PID）
+#   获取不到 → 返回空字符串 + return 1（由调用方决定是否中断）
 get_claude_session_id() {
-    local pid="${1:-$CLAUDE_PID}"
+    # 尝试1：从环境变量读取
+    if [[ -n "${CLAUDE_CODE_SESSION_ID:-}" ]]; then
+        echo "$CLAUDE_CODE_SESSION_ID"
+        return 0
+    fi
 
-    # 尝试1：从 sessions 文件读取（用 grep+sed，不依赖 jq/python）
+    # 尝试2：通过 PID 从 sessions 文件读取
+    local pid
+    pid=$(_get_claude_pid)
     local sessions_file="$HOME/.claude/sessions/${pid}.json"
     if [[ -f "$sessions_file" ]]; then
         local sid
@@ -48,32 +52,19 @@ get_claude_session_id() {
         fi
     fi
 
-    # 尝试2：从环境变量读取
-    if [[ -n "${CLAUDE_CODE_SESSION_ID:-}" ]]; then
-        echo "$CLAUDE_CODE_SESSION_ID"
-        return 0
-    fi
-
-    # 尝试3：终极 fallback（退化为基于 PID 的行为，保证不完全失效）
-    echo "pid-${pid}"
+    # 获取失败
+    return 1
 }
 
-CLAUDE_SESSION_ID="$(get_claude_session_id)"
+CLAUDE_SESSION_ID="$(get_claude_session_id)" || true
 export CLAUDE_SESSION_ID
 
 # 检查指定 session ID 是否仍存活（在 ~/.claude/sessions/ 中找到对应记录）。
-# 参数: session_id
+# 参数: session_id (UUID 格式)
 # 返回: 0=存活, 1=不存在/已过期
 _session_is_alive() {
     local sid="$1"
     [[ -z "$sid" ]] && return 1
-    # fallback 格式 "pid-<N>"：退化为 kill -0 检查
-    if [[ "$sid" == pid-* ]]; then
-        local fallback_pid="${sid#pid-}"
-        kill -0 "$fallback_pid" 2>/dev/null
-        return $?
-    fi
-    # 标准 UUID 格式：扫描 sessions 文件寻找匹配的 sessionId
     local sessions_dir="$HOME/.claude/sessions"
     [[ -d "$sessions_dir" ]] || return 1
     local f
@@ -88,17 +79,22 @@ _session_is_alive() {
 
 init_paths() {
     local target_cwd="${1:-}"
-    local caller_pid="${2:-$CLAUDE_PID}"
+    local caller_session="${2:-$CLAUDE_SESSION_ID}"
     local strict="${3:-false}"
     if [[ -n "$target_cwd" ]] && [[ -d "$target_cwd" ]]; then
         cd "$target_cwd" || return
     fi
     PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-    # Session-based 路由（优先，resume 后仍能正确路由）
-    local session_id
-    session_id="$(get_claude_session_id "$caller_pid")"
-    local session_active="$PROJECT_ROOT/.autopilot/active.session.$session_id"
+    # Session ID 为空时无法路由
+    if [[ -z "$caller_session" ]]; then
+        STATE_FILE=""
+        TASK_DIR=""
+        return
+    fi
+
+    # Session-based 路由
+    local session_active="$PROJECT_ROOT/.autopilot/active.session.$caller_session"
     if [[ -f "$session_active" ]]; then
         local slug
         slug=$(cat "$session_active")
@@ -107,20 +103,7 @@ init_paths() {
         return
     fi
 
-    # 兼容旧格式：active.<纯数字 PID>（升级过渡期）
-    local pid_active="$PROJECT_ROOT/.autopilot/active.$caller_pid"
-    if [[ -f "$pid_active" ]]; then
-        local slug
-        slug=$(cat "$pid_active")
-        # 迁移：将旧 PID 格式升级为 session 格式
-        echo "$slug" > "$session_active"
-        rm -f "$pid_active"
-        TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$slug"
-        STATE_FILE="$TASK_DIR/state.md"
-        return
-    fi
-
-    # strict 模式：仅 session/PID 路由，不回退（stop-hook 使用，防止跨 session 劫持）
+    # strict 模式：仅 session 路由，不回退（stop-hook 使用，防止跨 session 劫持）
     if [[ "$strict" == "true" ]]; then
         STATE_FILE=""
         TASK_DIR=""
@@ -130,25 +113,12 @@ init_paths() {
     # 扫描 requirements/ 中唯一活跃且未被其他 session 持有的任务，自动绑定
     local req_dir="$PROJECT_ROOT/.autopilot/requirements"
     if [[ -d "$req_dir" ]]; then
-        # 收集已被活跃 session 持有的 slug（新格式 + 旧格式兼容）
+        # 收集已被活跃 session 持有的 slug
         local held_slugs=""
-        for af in "$PROJECT_ROOT/.autopilot"/active.*; do
+        for af in "$PROJECT_ROOT/.autopilot"/active.session.*; do
             [[ -f "$af" ]] || continue
-            local af_suffix="${af##*/active.}"
-            local is_alive=false
-            if [[ "$af_suffix" == session.* ]]; then
-                # 新格式：检查 sessions 目录中是否有匹配的 sessionId
-                local af_sid="${af_suffix#session.}"
-                if _session_is_alive "$af_sid"; then
-                    is_alive=true
-                fi
-            elif [[ "$af_suffix" =~ ^[0-9]+$ ]]; then
-                # 旧格式：用 kill -0 检查 PID
-                if kill -0 "$af_suffix" 2>/dev/null; then
-                    is_alive=true
-                fi
-            fi
-            if [[ "$is_alive" == true ]]; then
+            local af_sid="${af##*/active.session.}"
+            if _session_is_alive "$af_sid"; then
                 held_slugs="${held_slugs}|$(cat "$af")"
             fi
         done
@@ -172,7 +142,7 @@ init_paths() {
         done < <(find "$req_dir" -maxdepth 2 -name "state.md" 2>/dev/null | sort -r)
 
         if [[ ${#candidates[@]} -eq 1 ]]; then
-            # 唯一活跃任务，自动绑定（写新格式）
+            # 唯一活跃任务，自动绑定
             echo "${candidates[0]}" > "$session_active"
             TASK_DIR="${candidate_dirs[0]}"
             STATE_FILE="$TASK_DIR/state.md"
@@ -237,13 +207,11 @@ generate_task_slug() {
 # ── 需求管理路径设置 ────────────────────────────────────────────
 
 # 创建 requirements 文件夹并设置 active 指针和路径变量。
-# 参数: slug
+# 参数: slug [session_id]
 # 副作用: 更新 TASK_DIR, STATE_FILE 全局变量；写入 active 指针（session 格式）
 setup_requirement_dir() {
     local slug="$1"
-    local caller_pid="${2:-$CLAUDE_PID}"
-    local session_id
-    session_id="$(get_claude_session_id "$caller_pid")"
+    local session_id="${2:-$CLAUDE_SESSION_ID}"
     TASK_DIR="$PROJECT_ROOT/.autopilot/requirements/$slug"
     mkdir -p "$TASK_DIR"
     echo "$slug" > "$PROJECT_ROOT/.autopilot/active.session.$session_id"
@@ -605,34 +573,18 @@ EOF
 
 # ── Active 指针清理 ──────────────────────────────────────────────
 
-# 清理当前 session 的 active 指针（新格式 + 旧格式兼容）
-# 参数: pid (可选，默认 $CLAUDE_PID)
+# 清理指定 session 的 active 指针
+# 参数: session_id (可选，默认 $CLAUDE_SESSION_ID)
 cleanup_active() {
-    local pid="${1:-$CLAUDE_PID}"
-    local session_id
-    session_id="$(get_claude_session_id "$pid")"
-    # 新格式
+    local session_id="${1:-$CLAUDE_SESSION_ID}"
     rm -f "$PROJECT_ROOT/.autopilot/active.session.$session_id"
-    # 旧格式兼容（清理同 PID 的旧文件，防止残留）
-    rm -f "$PROJECT_ROOT/.autopilot/active.$pid"
 }
 
 # 清理过期的 active 文件（session 已不存在的）
-# 支持新格式 active.session.<UUID> 和旧格式 active.<纯数字>
 cleanup_stale_actives() {
-    for f in "$PROJECT_ROOT/.autopilot"/active.*; do
+    for f in "$PROJECT_ROOT/.autopilot"/active.session.*; do
         [[ -f "$f" ]] || continue
-        local suffix="${f##*/active.}"
-        if [[ "$suffix" == session.* ]]; then
-            # 新格式：检查 session 是否存活
-            local sid="${suffix#session.}"
-            _session_is_alive "$sid" || rm -f "$f"
-        elif [[ "$suffix" =~ ^[0-9]+$ ]]; then
-            # 旧格式：用 kill -0 检查 PID 是否存活
-            kill -0 "$suffix" 2>/dev/null || rm -f "$f"
-        fi
-        # 其他格式忽略（不误删）
+        local sid="${f##*/active.session.}"
+        _session_is_alive "$sid" || rm -f "$f"
     done
-    # 清理残留的单例 active 文件（已废弃）
-    rm -f "$PROJECT_ROOT/.autopilot/active"
 }
