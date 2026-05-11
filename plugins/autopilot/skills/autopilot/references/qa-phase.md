@@ -43,6 +43,27 @@
 - 判断影响半径：低→轻量验证 | 中→精准验证 | 高→综合验证
 - 扫描项目配置识别可用的测试框架和工具
 
+### 前置：范围漂移检测
+
+在 Wave 1 之前执行。对比变更文件与设计文档的声明意图，检测范围漂移。
+
+1. 从状态文件 `## 设计文档` 和 `git log` 提交消息提取**声明意图**（本次变更应该做什么）
+2. 运行 `git diff --stat` 对比实际变更文件与声明意图
+3. 判定：
+   - **SCOPE CREEP**：变更了与声明意图无关的文件（"顺手改"的代码）
+   - **REQUIREMENTS MISSING**：设计要求中提到的项在 diff 中无对应实现
+4. 输出：
+
+```
+Scope Check: [CLEAN / DRIFT DETECTED / REQUIREMENTS MISSING]
+Intent: <声明意图 — 一句话>
+Delivered: <实际 diff 内容 — 一句话>
+[如有漂移：列出每个超出范围的变更]
+[如有缺失：列出每个未实现的设计要求]
+```
+
+5. 信息性不阻塞流程，结果追加到 QA 报告中。
+
 ### Wave 1 — 命令执行（并行）
 
 **在同一轮响应中发出多个 Bash 工具调用**，所有命令独立运行、互不依赖：
@@ -118,7 +139,20 @@ Wave 1 完成后统计 Tier 0+1 ❌ 数量：≥3 → 跳过 Wave 1.5/2 直接 a
 
 ### Wave 2 — AI 审查（并行 Agent，基于 Wave 1 + Wave 1.5 结果）
 
-**在同一轮响应中使用 Agent 工具启动两个并行审查 Agent。** 两个 Agent 独立运行、互不依赖，完成后合流。
+**在同一轮响应中使用 Agent 工具启动全部审查 Agent（Tier 2a-2b + 条件专家）。** 所有 Agent 独立运行、互不依赖，完成后合流。
+
+#### 前置：确定需要启动的专家
+
+基于「前置：变更分析」的分类结果，按以下规则确定要启动的专家 Agent：
+
+| 专家 | 触发条件 | prompt 模板 |
+|------|---------|-------------|
+| testing | **始终启用** | `references/specialist-testing-prompt.md` |
+| maintainability | **始终启用** | `references/specialist-maintainability-prompt.md` |
+| security | diff 含后端代码（controller/handler/middleware/auth） | `references/specialist-security-prompt.md` |
+| performance | diff 含前端组件或数据库查询 | `references/specialist-performance-prompt.md` |
+| data-migration | diff 含 migration 文件 | `references/specialist-data-migration-prompt.md` |
+| api-contract | diff 含 API route/controller | `references/specialist-api-contract-prompt.md` |
 
 #### Tier 2a: design-reviewer Agent（设计符合性）
 
@@ -137,20 +171,31 @@ Wave 1 完成后统计 Tier 0+1 ❌ 数量：≥3 → 跳过 Wave 1.5/2 直接 a
 - CLAUDE.md 内容或关键项目约定（如果存在）
 - Wave 1 + Wave 1.5 各 Tier 通过/失败状态摘要
 
-**核心原则**：置信度评分过滤 — Agent 按 `references/code-quality-reviewer-prompt.md` 中的审查清单审查，只报告置信度 ≥80 的问题。
+**核心原则**：置信度评分过滤 — Agent 按 `references/code-quality-reviewer-prompt.md` 中的审查清单审查，只报告置信度 ≥80 的问题。深度检查已委托给专家子代理（见 Pass 2 注释）。
+
+#### Tiers 2c-2h: 专家子代理（并行，条件触发）
+
+对每个满足触发条件的专家，使用 Agent 工具（model: "sonnet"）并行启动，prompt 填入：
+- 项目根目录路径
+- `git diff --stat` 变更摘要
+
+每个专家输出独立的审查报告（N 个问题 + Strengths + Issues）。全部与 Tier 2a/2b 在同一轮响应中并行启动。
 
 #### 合流
 
-两个 Agent 都完成后：
+所有 Agent 完成后：
 1. 收集 design-reviewer 产出：设计符合状态 + 问题列表
 2. 收集 code-quality-reviewer 产出：Issues（Critical/Important/Minor）+ Assessment
-3. 合并为 QA 报告的 Tier 2a/2b 部分
+3. 收集各专家产出：按专家类型归类
+4. 去重：同一 file:line 被多个专家报告时，保留最高置信度的报告
+5. 合并为 QA 报告的 Tier 2 部分
 
 #### 降级策略
 
-- **单个 Agent 失败** → 在变更日志记录警告，使用另一个 Agent 的结果继续（不阻塞流程）
-- **两个 Agent 都失败** → 编排器自行执行简化版审查（仅检查最关键项：设计覆盖率 + OWASP Top 10）
+- **单 Agent 失败** → 在变更日志记录警告，使用其余 Agent 的结果继续
+- **全部 Agent 失败** → 编排器自行执行简化版审查（设计覆盖率 + OWASP Top 10）
 - **红队未生成测试** → 设计审查 Agent 额外承担验收检查清单的逐项人工验证
+- **专家 Agent 不可用** → 跳过该专家，不阻塞流程
 
 ### 产出报告
 

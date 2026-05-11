@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.18.0)
+### 3. autopilot (v3.19.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
@@ -294,6 +294,14 @@
 ## 更新日志
 
 ### 2026-05-11
+- autopilot 升级至 v3.19.0：QA Wave 2 新增并行专家子代理 + 范围漂移检测
+  - 新增 6 个条件触发专家 Agent（testing/maintainability 始终启用，security/performance/data-migration/api-contract 按 diff 内容触发）
+  - 专家 Agent 与 design-reviewer/code-quality-reviewer 在同一轮响应中并行启动，合流时自动去重
+  - code-quality-reviewer Pass 2 精简去重：测试缺口/性能/DRY/死代码/魔法数字委托给专家
+  - 新增「前置：范围漂移检测」步骤（Wave 1 前），对比 git diff 与设计文档声明意图
+  - 新增 `references/specialist-*-prompt.md`（6 个专家 prompt 模板）
+  - 新增 `references/review-checklist.md` 专家索引
+
 - autopilot 升级至 v3.18.0：简化 session 路由，移除所有 PID 兼容逻辑
   - 路由键统一为 `active.session.<SESSION_ID>`，移除 `active`（单例）、`active.<PID>`、`pid-*` 格式
   - `get_claude_session_id()`：简化为两级查找（env var → PID 查 sessions 文件），获取不到则 return 1
