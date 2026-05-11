@@ -81,7 +81,52 @@ max_iterations: 30' "$STATE_FILE" && rm -f "${STATE_FILE}.bak"
     fi
 fi
 
-# ── 5. phase=done → 完成清理 / 自动链接 ──
+# ── 5. Phase skip detection ──
+# 检测 AI 是否在单回合内跳过了关键步骤（plan-reviewer / 红蓝对抗）。
+# 变更日志是唯一证据源——如果 AI 直接 Edit 改 phase 而不写日志，此检测依然有效。
+# 仅在 implement / qa / merge 阶段检测（done 阶段代码已提交，回滚无意义）。
+
+if [[ "$PHASE" == "implement" ]] || [[ "$PHASE" == "qa" ]] || [[ "$PHASE" == "merge" ]]; then
+    CHANGELOG_FOR_SKIP=$(sed -n '/^## 变更日志/,$ p' "$STATE_FILE" 2>/dev/null || true)
+
+    MISSING_PLAN_REVIEWER=false
+    MISSING_RED_BLUE=false
+
+    # plan-reviewer 证据：日志中必须有 plan-reviewer / Plan Reviewer / 设计方案审查 相关记录
+    if ! echo "$CHANGELOG_FOR_SKIP" | grep -qiE "plan.reviewer|Plan Reviewer|设计方案审查"; then
+        MISSING_PLAN_REVIEWER=true
+    fi
+
+    # 红蓝对抗证据（仅 qa / merge 阶段检查）：日志中必须有 蓝队/红队 记录
+    if [[ "$PHASE" == "qa" ]] || [[ "$PHASE" == "merge" ]]; then
+        if ! echo "$CHANGELOG_FOR_SKIP" | grep -qiE "蓝队|红队"; then
+            MISSING_RED_BLUE=true
+        fi
+    fi
+
+    # 回退到最早缺失的阶段
+    if [[ "$MISSING_PLAN_REVIEWER" == "true" ]]; then
+        echo "⚠️  autopilot: plan-reviewer 未执行，回退到 design 阶段" >&2
+        set_field "phase" '"design"'
+        NEXT_SKIP_ITERATION=$((ITERATION + 1))
+        set_field "iteration" "$NEXT_SKIP_ITERATION"
+        PROMPT="检测到 plan-reviewer 未执行（变更日志无相关记录）。回退到 design 阶段。请读取 ${STATE_FILE}，使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案。参见 references/plan-reviewer-prompt.md。审查通过后追加变更日志，然后设 phase: implement。"
+        jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_SKIP_ITERATION} | phase: design | plan-reviewer 回滚" \
+            '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
+        exit 0
+    elif [[ "$MISSING_RED_BLUE" == "true" ]]; then
+        echo "⚠️  autopilot: 红蓝对抗未执行，回退到 implement 阶段" >&2
+        set_field "phase" '"implement"'
+        NEXT_SKIP_ITERATION=$((ITERATION + 1))
+        set_field "iteration" "$NEXT_SKIP_ITERATION"
+        PROMPT="检测到红蓝对抗未执行（变更日志无蓝队/红队记录）。回退到 implement 阶段。请读取 ${STATE_FILE}，使用 Agent 工具在同一轮响应中并行启动蓝队和红队 sub-agent (model: sonnet)。参见 references/implement-phase.md。完成后追加变更日志，然后设 phase: qa。"
+        jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_SKIP_ITERATION} | phase: implement | 红蓝对抗回滚" \
+            '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
+        exit 0
+    fi
+fi
+
+# ── 6. phase=done → 完成清理 / 自动链接 ──
 
 SKIP_INCREMENT=0
 
@@ -211,7 +256,7 @@ if [[ "$PHASE" == "done" ]]; then
     fi
 fi
 
-# ── 6. 审批门检查 ──
+# ── 7. 审批门检查 ──
 
 if [[ -n "$GATE" ]]; then
     bash "$SCRIPT_DIR/notify.sh" "$GATE" 2>/dev/null || true
@@ -219,7 +264,7 @@ if [[ -n "$GATE" ]]; then
     exit 0
 fi
 
-# ── 7. max_iterations 检查 ──
+# ── 8. max_iterations 检查 ──
 
 if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
     echo "🛑 autopilot: 达到最大迭代次数 ($MAX_ITERATIONS)。" >&2
@@ -228,7 +273,7 @@ if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
     exit 0
 fi
 
-# ── 8. 递增 iteration（自动链接创建的新状态文件跳过递增） ──
+# ── 9. 递增 iteration（自动链接创建的新状态文件跳过递增） ──
 
 if [[ "$SKIP_INCREMENT" -eq 0 ]]; then
     NEXT_ITERATION=$((ITERATION + 1))
@@ -237,7 +282,7 @@ else
     NEXT_ITERATION="$ITERATION"
 fi
 
-# ── 9. 构造 block JSON ──
+# ── 10. 构造 block JSON ──
 # 注意：macOS bash 3.2 有 multibyte bug，$VAR 后紧跟全角标点会吞掉变量值。
 # 所有变量必须用 ${VAR} 花括号界定。
 
