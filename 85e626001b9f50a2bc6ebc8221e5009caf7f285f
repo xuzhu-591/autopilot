@@ -1,0 +1,101 @@
+plugins/autopilot/skills/autopilot/references/specialist-security-prompt.md
+  1bc4720d0046d2b1 1-85
+plugins/autopilot/skills/autopilot/references/specialist-api-contract-prompt.md
+  1bc4720d0046d2b1 1-81
+plugins/autopilot/skills/autopilot/references/qa-phase.md
+  1bc4720d0046d2b1 46-66,142,144-155,174-180,182,186,189-191,195-196,198
+CLAUDE.md
+  1bc4720d0046d2b1 51,297-304
+plugins/autopilot/skills/autopilot/references/specialist-testing-prompt.md
+  1bc4720d0046d2b1 1-72
+plugins/autopilot/skills/autopilot/references/code-quality-reviewer-prompt.md
+  1bc4720d0046d2b1 63-64,71,73
+plugins/autopilot/skills/autopilot/references/specialist-maintainability-prompt.md
+  1bc4720d0046d2b1 1-74
+plugins/autopilot/skills/autopilot/references/review-checklist.md
+  1bc4720d0046d2b1 1-20
+.claude-plugin/marketplace.json
+  1bc4720d0046d2b1 32
+plugins/autopilot/.claude-plugin/plugin.json
+  1bc4720d0046d2b1 3
+plugins/autopilot/skills/autopilot/references/specialist-performance-prompt.md
+  1bc4720d0046d2b1 1-87
+plugins/autopilot/skills/autopilot/references/specialist-data-migration-prompt.md
+  1bc4720d0046d2b1 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "85e626001b9f50a2bc6ebc8221e5009caf7f285f",
+  "prompts": {
+    "1bc4720d0046d2b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "726504a0-4632-4919-8b59-6be2a168eae6",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 564,
+      "total_deletions": 16,
+      "accepted_lines": 564,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot/references/specialist-maintainability-prompt.md": {
+          "additions": 74,
+          "accepted_lines": 74
+        },
+        "plugins/autopilot/skills/autopilot/references/specialist-testing-prompt.md": {
+          "additions": 72,
+          "accepted_lines": 72
+        },
+        "plugins/autopilot/skills/autopilot/references/specialist-data-migration-prompt.md": {
+          "additions": 79,
+          "accepted_lines": 79
+        },
+        "plugins/autopilot/skills/autopilot/references/specialist-api-contract-prompt.md": {
+          "additions": 81,
+          "accepted_lines": 81
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/references/review-checklist.md": {
+          "additions": 20,
+          "deletions": 1,
+          "accepted_lines": 20
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/references/specialist-performance-prompt.md": {
+          "additions": 87,
+          "accepted_lines": 87
+        },
+        "plugins/autopilot/skills/autopilot/references/code-quality-reviewer-prompt.md": {
+          "additions": 4,
+          "deletions": 6,
+          "accepted_lines": 4
+        },
+        "plugins/autopilot/skills/autopilot/references/qa-phase.md": {
+          "additions": 51,
+          "deletions": 6,
+          "accepted_lines": 51
+        },
+        "plugins/autopilot/skills/autopilot/references/specialist-security-prompt.md": {
+          "additions": 85,
+          "accepted_lines": 85
+        },
+        "CLAUDE.md": {
+          "additions": 9,
+          "deletions": 1,
+          "accepted_lines": 9
+        }
+      }
+    }
+  }
+}
