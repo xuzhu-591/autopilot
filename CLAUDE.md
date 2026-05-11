@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v3.19.0)
+### 3. autopilot (v3.19.1)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
 
@@ -294,6 +294,12 @@
 ## 更新日志
 
 ### 2026-05-11
+- autopilot 升级至 v3.19.1：新增 stage-gate 阶段防护 — Stop hook 跳跃检测 + 强制阶段断点
+  - stop-hook.sh 新增 Section 5 Phase skip detection：通过变更日志检测 plan-reviewer / 红蓝对抗是否执行
+  - 缺失时自动回退 phase（design/implement）并注入纠正 prompt，阻止 AI 单回合内连续跨越多个阶段
+  - SKILL.md 新增核心铁律 #8「阶段边界必须停止」+ 6 处 ⏹ STOP HERE 标记覆盖全部阶段转换点
+  - 根因：AI 在简单任务上可在单回合内一气呵成完成全部阶段，Stop hook 是回合边界机制无法介入
+
 - autopilot 升级至 v3.19.0：QA Wave 2 新增并行专家子代理 + 范围漂移检测
   - 新增 6 个条件触发专家 Agent（testing/maintainability 始终启用，security/performance/data-migration/api-contract 按 diff 内容触发）
   - 专家 Agent 与 design-reviewer/code-quality-reviewer 在同一轮响应中并行启动，合流时自动去重
