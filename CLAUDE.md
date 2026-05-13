@@ -48,40 +48,33 @@
 
 ---
 
-### 3. autopilot (v3.19.1)
+### 3. autopilot (v4.0.0)
 **类型**: Skill + Hook 插件
-**功能**: AI 自动驾驶工程套件（全流程闭环 + Deep Design 交互式设计 + 需求管理 + 智能提交 + 工程诊断 + 性能保障 + Worktree 自动初始化）
+**功能**: AI 自动驾驶工程套件（子代理驱动线性流程 + 蓝图对抗 + 五层 QA + 知识工程 + 智能提交 + 工程诊断 + Worktree 管理）
 
 **包含 Skill**:
-- `autopilot`：全流程闭环编排器（红蓝对抗 + 五层 QA + 性能保障 + 知识工程 + 自动修复）
+- `autopilot`：全流程闭环编排器（子代理驱动 + 红蓝对抗 + 五层 QA + 知识工程）
 - `autopilot-commit`：智能提交工具（React 检测、最佳实践优化、代码理解测验、任务同步）
 - `autopilot-doctor`：工程健康度诊断（11 维度评分 + 测试金字塔三层检测 + 性能保障检测 + autopilot 兼容性矩阵 + 自动修复）
 - `worktree-repair`：手动修复已有 worktree 的配置缺失（符号链接 + 依赖安装）
 
-**核心能力**:
-- 从目标描述到代码合并的全程自动化
-- 阶段状态机驱动：design → implement → qa → auto-fix → merge
-- 仅在两个审批门需要人工介入（设计审批 + 验收审批），auto-approve 模式下可全自动
-- 项目模式 Auto-Chain：任务完成后 AI 评估信心，高信心时自动链接下一个 DAG 就绪任务（auto_approve=true）
-- 全项目 QA：所有 DAG 任务完成后自动触发跨任务集成质量验证（mode: "project-qa"）
-- `/autopilot next` 自动选择第一个就绪任务并启动（而非仅展示列表）
-- 设计方案审查：design 阶段 ExitPlanMode 前启动 plan-reviewer sub-agent，6 维度审查（需求完整性、技术可行性、任务分解、验证覆盖、风险评估、范围控制），置信度 ≥90 为 BLOCKER，最多 2 轮审查
-- 设计阶段验收场景独立生成 + Plan Reviewer 双向覆盖校验（三层信息隔离验证链）
+**核心能力 (v4 变更)**:
+- **子代理驱动线性流程**：推式阶段推进，主对话主动执行而非 wait-for-hook
+- **Plan Reviewer 强制执行**：design 阶段硬编码步骤，不再依赖事后 changelog 检测
+- **知识工程增强**：design step 0 强制加载 + merge 独立知识 commit
+- **英文 Slug**：AI 预生成 --slug 参数，不再从中文目标截取
+- **Stop-hook 瘦身**：从 350 行降至 ~60 行纯门卫
 - 红蓝对抗：蓝队按计划编码 + 红队仅看设计文档写验收测试，并行执行、信息隔离
-- 五层 QA 检查（Tier 0 红队验收测试 + Tier 1-4）+ Tier 3.5 性能保障验证 + 自动修复循环（最多 3 次重试）
+- 五层 QA 检查（Tier 0 红队验收测试 + Tier 1-4）+ Tier 3.5 性能保障验证 + 自动修复循环
 - 系统化调试方法论：观察 → 假设 → 验证 → 修复（四阶段）
-- 两阶段代码审查：设计符合性 + 代码质量，并行 Sub-Agent 执行（置信度 ≥80 过滤）
-- 防合理化表格：对抗 AI 跳过测试/修改红队测试的借口
 - 铁律：不允许修改红队测试来通过 QA，成功需要证据，假设需要证据
-- 知识工程：design 阶段消费历史决策和模式提升设计质量，merge 阶段反馈驱动提取知识持续积累（.claude/knowledge/）
-- 智能提交：三阶段并行执行模型，React 优化、Bugfix 双模式验证（自动化测试 + 运行时验证）、代码测验、CLAUDE.md 更新、版本升级、ai-todo 同步
-- 生成高质量中文提交信息（业务描述 + 技术说明）
-- 工程诊断：11 维度加权评分（测试/类型/lint/构建/CI/结构/文档/Git/依赖/AI就绪度/性能保障），S-F 等级，autopilot 兼容性矩阵，`--fix` 自动修复
-- 性能保障：Lighthouse CI（Core Web Vitals 预算）、Playwright 性能断言（page.metrics / Web Vitals）、Bundle Size 监控（size-limit）
-- Worktree 自动初始化：`WorktreeCreate` hook 自动链接 .env 等配置文件、安装依赖、分配独立端口；`WorktreeRemove` hook 自动清理；`/worktree-repair` 手动修复
+- 智能提交：三阶段并行执行模型，React 优化、Bugfix 双模式验证、代码测验、版本升级
+- 工程诊断：11 维度加权评分，S-F 等级，autopilot 兼容性矩阵，`--fix` 自动修复
+- Worktree 管理：使用 `grove` 工具管理 worktree
+- Multi-Repo 模式：跨仓库编排，per-repo worktree + per-repo commit
 
 **使用方式**:
-- 运行 `/autopilot <目标描述>` 启动全流程闭环
+- 运行 `/autopilot --slug <english-slug> <目标描述>` 启动全流程闭环
 - `/autopilot commit` 智能提交（独立使用）
 - `/autopilot doctor [--fix]` 工程健康度诊断
 - `/autopilot approve` 批准审批门
@@ -292,6 +285,19 @@
 ---
 
 ## 更新日志
+
+### 2026-05-13
+- autopilot 升级至 v4.0.0：子代理驱动线性流程重构（不兼容变更）
+  - 阶段推进模型从拉式（stop-hook prompt 注入）改为推式（主对话主动执行）
+  - SKILL.md 重写：每个 phase 的步骤在主对话中硬编码，不再依赖 stop-hook 告知下一步
+  - Stop-hook 瘦身：从 350 行五重职责降至 ~60 行纯门卫（路径解析+session隔离+审批门+done清理+迭代上限）
+  - plan-reviewer 强制执行：design 阶段硬编码步骤，删除 Section 5 事后 changelog grep 检测+回滚逻辑
+  - 知识消费增强：design step 0 强制扫描 involved repos 的 .autopilot/ 加载决策和模式
+  - 知识提取增强：merge 阶段独立知识 commit（commit #2），明确 skip 触发条件
+  - Slug 英文生成：新增 --slug 参数，AI 根据目标语义预生成英文 kebab-case slug
+  - 状态文件精简：删除 plan_mode/brief_file/next_task/auto_approve/max_retries/retry_count/knowledge_extracted 字段
+  - 删除 --deep 深度设计模式，删除 auto-chain 机制（由主对话在 merge 阶段处理）
+  - lib.sh create_brief_state_file/create_project_qa_state_file 同步精简字段
 
 ### 2026-05-11
 - autopilot 升级至 v3.19.1：新增 stage-gate 阶段防护 — Stop hook 跳跃检测 + 强制阶段断点

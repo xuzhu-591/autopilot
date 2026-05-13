@@ -1,47 +1,31 @@
 #!/bin/bash
 
-# autopilot Stop Hook — 阶段状态机循环引擎
-# 基于 ralph-loop 的 Stop hook 模式，增加阶段状态机和审批门逻辑
+# autopilot Stop Hook — 纯门卫（v4）
+# 不再注入 prompt，不再回滚 phase，不再检测 skip。
+# 只做：路径解析 → session 隔离 → 审批门 → done 清理 → 迭代上限。
 #
-# 行为:
-#   1. 状态文件不存在 → 放行
-#   2. session_id 不匹配 → 放行
-#   3. gate 非空（审批门） → 发通知 + 放行（等待用户审批）
-#   4. phase=done → 清理 + 放行
-#   5. 超过 max_iterations → 清理 + 放行
-#   6. 其他 → block + 注入阶段 prompt，继续循环
-
-# 安全策略：Stop hook 中任何未预期的错误都应放行（exit 0），
-# 只有明确需要 block 时才输出 JSON。避免 set -e 导致意外非零退出。
+# 安全策略：任何未预期的错误都放行（exit 0）。
 trap 'exit 0' ERR
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=./lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-# ── 0. 先读 stdin，提取 cwd 后再初始化路径 ──
-# Stop hook 的 stdin JSON 包含 cwd 字段，是 Claude Code 的实际工作目录。
-# 在 worktree 场景下 hook 脚本的 shell CWD 可能不是项目目录，
-# 必须用 stdin 中的 cwd 来正确定位状态文件。
+# ── 0. 读 stdin ──
 
 HOOK_INPUT=$(timeout 5 cat 2>/dev/null || true)
 HOOK_CWD=$(echo "$HOOK_INPUT" | jq -r '.cwd // ""' 2>/dev/null || true)
 HOOK_SESSION=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null || true)
 
-# Session ID 是路由的唯一标识，获取不到则放行
-if [[ -z "$HOOK_SESSION" ]]; then
-    exit 0
-fi
+[[ -z "$HOOK_SESSION" ]] && exit 0
 
-# 用 stdin 的 cwd + session_id 初始化路径（strict=true: 仅 session 路由，不劫持无关 session）
 init_paths "$HOOK_CWD" "$HOOK_SESSION" "true"
 
-# 状态文件不存在时直接放行（strict 模式下无 active.session.<ID> 即为空）
 if [[ -z "$STATE_FILE" ]] || [[ ! -f "$STATE_FILE" ]]; then
     exit 0
 fi
 
-# ── 2. 解析 frontmatter ──
+# ── 1. 解析 ──
 
 PHASE=$(get_field "phase" || true)
 GATE=$(get_field "gate" || true)
@@ -49,302 +33,40 @@ ITERATION=$(get_field "iteration" || true)
 MAX_ITERATIONS=$(get_field "max_iterations" || true)
 STATE_SESSION=$(get_field "session_id" || true)
 
-# ── 3. Session 隔离 ──
+# ── 2. Session 隔离 ──
 
-# Guard: 非空且不匹配 → 不同会话，放行
 if [[ -n "$STATE_SESSION" ]] && [[ "$STATE_SESSION" != "$HOOK_SESSION" ]]; then
     exit 0
 fi
 
-# ── 4. 数值校验（缺失时自动修复，不删除文件） ──
-
-if [[ ! "$ITERATION" =~ ^[0-9]+$ ]]; then
-    echo "⚠️  autopilot: iteration 字段缺失或无效 ('$ITERATION')，自动修复为 1" >&2
-    ITERATION=1
-    # 尝试修复状态文件：如果字段存在但值非法则修正，如果字段不存在则注入
-    if grep -q "^iteration:" "$STATE_FILE" 2>/dev/null; then
-        set_field "iteration" "1"
-    else
-        sed -i.bak '/^phase:/a\
-iteration: 1' "$STATE_FILE" && rm -f "${STATE_FILE}.bak"
-    fi
-fi
-
-if [[ ! "$MAX_ITERATIONS" =~ ^[0-9]+$ ]]; then
-    echo "⚠️  autopilot: max_iterations 字段缺失或无效 ('$MAX_ITERATIONS')，自动修复为 30" >&2
-    MAX_ITERATIONS=30
-    if grep -q "^max_iterations:" "$STATE_FILE" 2>/dev/null; then
-        set_field "max_iterations" "30"
-    else
-        sed -i.bak '/^iteration:/a\
-max_iterations: 30' "$STATE_FILE" && rm -f "${STATE_FILE}.bak"
-    fi
-fi
-
-# ── 5. Phase skip detection ──
-# 检测 AI 是否在单回合内跳过了关键步骤（plan-reviewer / 红蓝对抗）。
-# 变更日志是唯一证据源——如果 AI 直接 Edit 改 phase 而不写日志，此检测依然有效。
-# 仅在 implement / qa / merge 阶段检测（done 阶段代码已提交，回滚无意义）。
-
-if [[ "$PHASE" == "implement" ]] || [[ "$PHASE" == "qa" ]] || [[ "$PHASE" == "merge" ]]; then
-    CHANGELOG_FOR_SKIP=$(sed -n '/^## 变更日志/,$ p' "$STATE_FILE" 2>/dev/null || true)
-
-    MISSING_PLAN_REVIEWER=false
-    MISSING_RED_BLUE=false
-
-    # plan-reviewer 证据：日志中必须有 plan-reviewer / Plan Reviewer / 设计方案审查 相关记录
-    if ! echo "$CHANGELOG_FOR_SKIP" | grep -qiE "plan.reviewer|Plan Reviewer|设计方案审查"; then
-        MISSING_PLAN_REVIEWER=true
-    fi
-
-    # 红蓝对抗证据（仅 qa / merge 阶段检查）：日志中必须有 蓝队/红队 记录
-    if [[ "$PHASE" == "qa" ]] || [[ "$PHASE" == "merge" ]]; then
-        if ! echo "$CHANGELOG_FOR_SKIP" | grep -qiE "蓝队|红队"; then
-            MISSING_RED_BLUE=true
-        fi
-    fi
-
-    # 回退到最早缺失的阶段
-    if [[ "$MISSING_PLAN_REVIEWER" == "true" ]]; then
-        echo "⚠️  autopilot: plan-reviewer 未执行，回退到 design 阶段" >&2
-        set_field "phase" '"design"'
-        NEXT_SKIP_ITERATION=$((ITERATION + 1))
-        set_field "iteration" "$NEXT_SKIP_ITERATION"
-        PROMPT="检测到 plan-reviewer 未执行（变更日志无相关记录）。回退到 design 阶段。请读取 ${STATE_FILE}，使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案。参见 references/plan-reviewer-prompt.md。审查通过后追加变更日志，然后设 phase: implement。"
-        jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_SKIP_ITERATION} | phase: design | plan-reviewer 回滚" \
-            '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
-        exit 0
-    elif [[ "$MISSING_RED_BLUE" == "true" ]]; then
-        echo "⚠️  autopilot: 红蓝对抗未执行，回退到 implement 阶段" >&2
-        set_field "phase" '"implement"'
-        NEXT_SKIP_ITERATION=$((ITERATION + 1))
-        set_field "iteration" "$NEXT_SKIP_ITERATION"
-        PROMPT="检测到红蓝对抗未执行（变更日志无蓝队/红队记录）。回退到 implement 阶段。请读取 ${STATE_FILE}，使用 Agent 工具在同一轮响应中并行启动蓝队和红队 sub-agent (model: sonnet)。参见 references/implement-phase.md。完成后追加变更日志，然后设 phase: qa。"
-        jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_SKIP_ITERATION} | phase: implement | 红蓝对抗回滚" \
-            '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
-        exit 0
-    fi
-fi
-
-# ── 6. phase=done → 完成清理 / 自动链接 ──
-
-SKIP_INCREMENT=0
-
-if [[ "$PHASE" == "done" ]]; then
-    # 知识提取守卫：AI 跳过知识提取直接设 done → 回滚到 merge
-    KNOWLEDGE_EXTRACTED=$(get_field "knowledge_extracted" || true)
-    if [[ "$KNOWLEDGE_EXTRACTED" != "true" ]] && [[ "$KNOWLEDGE_EXTRACTED" != "skipped" ]]; then
-        # 豁免：无代码变更的阶段不需要知识提取
-        MODE_CHECK=$(get_field "mode" || true)
-        BRIEF_CHECK=$(get_field "brief_file" || true)
-        if { [[ "$MODE_CHECK" == "project" ]] && [[ -z "$BRIEF_CHECK" ]]; } || [[ "$MODE_CHECK" == "project-qa" ]]; then
-            set_field "knowledge_extracted" '"skipped"'
-        else
-            set_field "phase" '"merge"'
-            NEXT_ITERATION=$((ITERATION + 1))
-            set_field "iteration" "$NEXT_ITERATION"
-            PROMPT="你跳过了知识提取步骤。读取 ${STATE_FILE}，按照 autopilot skill Phase: merge 的知识提取与沉淀步骤执行。完成后用 Edit 设置 knowledge_extracted 为 true（有新增）或 skipped（无新增），然后再设 phase: done。"
-            jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_ITERATION} | phase: merge | 知识提取回滚" \
-                '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
-            exit 0
-        fi
-    fi
-
-    # 新增：skipped 但变更日志无证据 → 视为无效
-    if [[ "$KNOWLEDGE_EXTRACTED" == "skipped" ]]; then
-        if ! sed -n '/^## 变更日志/,$ p' "$STATE_FILE" | grep -qE "知识提取|knowledge.extract"; then
-            set_field "phase" '"merge"'
-            NEXT_ITERATION=$((ITERATION + 1))
-            set_field "iteration" "$NEXT_ITERATION"
-            PROMPT="知识提取标记为 skipped 但变更日志中无分析证据。读取 ${STATE_FILE}，按照 autopilot skill Phase: merge 的知识提取与沉淀步骤执行。完成后在变更日志追加知识提取记录，然后设 knowledge_extracted 和 phase: done。"
-            jq -n --arg prompt "$PROMPT" --arg msg "autopilot iteration ${NEXT_ITERATION} | phase: merge | 知识提取证据缺失回滚" \
-                '{"decision":"block","reason":$prompt,"systemMessage":$msg}'
-            exit 0
-        fi
-    fi
-
-    MODE=$(get_field "mode" || true)
-
-    # Case 0: project-qa 完成 → 项目完成通知 + 清理 active 指针
-    if [[ "$MODE" == "project-qa" ]]; then
-        bash "$SCRIPT_DIR/notify.sh" project-complete 2>/dev/null || true
-        cleanup_active "$HOOK_SESSION"
-        exit 0
-    fi
-
-    NEXT_TASK=$(get_field "next_task" || true)
-    BRIEF_FILE=$(get_field "brief_file" || true)
-    DAG_FILE="$PROJECT_ROOT/.autopilot/project/dag.yaml"
-
-    # Case 0.5: 项目模式设计完成（非子任务）→ 自动启动首个就绪任务
-    if [[ "$MODE" == "project" ]] && [[ -z "$BRIEF_FILE" ]] && [[ -f "$DAG_FILE" ]]; then
-        FIRST_READY=$(get_first_ready_task "$DAG_FILE")
-        if [[ -n "$FIRST_READY" ]] && [[ "$FIRST_READY" != "ALL_DONE" ]]; then
-            TASK_FILE="$PROJECT_ROOT/.autopilot/project/tasks/${FIRST_READY}.md"
-            if [[ -f "$TASK_FILE" ]]; then
-                new_slug=$(generate_task_slug "$FIRST_READY")
-                setup_requirement_dir "$new_slug" "$HOOK_SESSION"
-                TASK_FILE_ABS=$(cd "$(dirname "$TASK_FILE")" && pwd)/$(basename "$TASK_FILE")
-                create_brief_state_file "$TASK_FILE_ABS" "$HOOK_SESSION" "30" "3" "true"
-                bash "$SCRIPT_DIR/notify.sh" auto-chain 2>/dev/null || true
-                echo "🔗 project-design → ${FIRST_READY}" >&2
-                PHASE=$(get_field "phase" || true)
-                ITERATION=$(get_field "iteration" || true)
-                MAX_ITERATIONS=$(get_field "max_iterations" || true)
-                SKIP_INCREMENT=1
-                # 落入下方 block JSON 构造
-            else
-                bash "$SCRIPT_DIR/notify.sh" project-design-complete 2>/dev/null || true
-                cleanup_active "$HOOK_SESSION"
-                exit 0
-            fi
-        else
-            bash "$SCRIPT_DIR/notify.sh" project-design-complete 2>/dev/null || true
-            cleanup_active "$HOOK_SESSION"
-            exit 0
-        fi
-
-    # Case 1: AI 信号了下一个任务 → 自动链接
-    elif [[ -n "$NEXT_TASK" ]] && [[ -f "$DAG_FILE" ]]; then
-        TASK_FILE="$PROJECT_ROOT/.autopilot/project/tasks/${NEXT_TASK}.md"
-        if [[ -f "$TASK_FILE" ]]; then
-            # 为新任务创建新的 requirements 文件夹
-            new_slug=$(generate_task_slug "$NEXT_TASK")
-            setup_requirement_dir "$new_slug" "$HOOK_SESSION"
-            TASK_FILE_ABS=$(cd "$(dirname "$TASK_FILE")" && pwd)/$(basename "$TASK_FILE")
-            create_brief_state_file "$TASK_FILE_ABS" "$HOOK_SESSION" "30" "3" "true"
-            bash "$SCRIPT_DIR/notify.sh" auto-chain 2>/dev/null || true
-            echo "🔗 auto-chain: ${NEXT_TASK}" >&2
-            # 重新读取新状态文件的字段
-            PHASE=$(get_field "phase" || true)
-            ITERATION=$(get_field "iteration" || true)
-            MAX_ITERATIONS=$(get_field "max_iterations" || true)
-            SKIP_INCREMENT=1
-            # 落入下方 block JSON 构造
-        else
-            echo "⚠️  autopilot: next_task file not found: ${TASK_FILE}" >&2
-            bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
-            cleanup_active "$HOOK_SESSION"
-            exit 0
-        fi
-    # Case 2: 项目子任务完成 + 无 next_task → 检查是否全部完成
-    elif [[ -n "$BRIEF_FILE" ]] && [[ -f "$DAG_FILE" ]]; then
-        RESULT=$(get_first_ready_task "$DAG_FILE")
-        if [[ "$RESULT" == "ALL_DONE" ]]; then
-            # 全部完成 → 启动全项目 QA，创建新的 requirements 文件夹
-            qa_slug=$(generate_task_slug "project-integration-qa")
-            setup_requirement_dir "$qa_slug" "$HOOK_SESSION"
-            create_project_qa_state_file "$HOOK_SESSION"
-            bash "$SCRIPT_DIR/notify.sh" project-qa 2>/dev/null || true
-            echo "🏁 所有任务已完成，启动全项目 QA" >&2
-            PHASE=$(get_field "phase" || true)
-            ITERATION=$(get_field "iteration" || true)
-            MAX_ITERATIONS=$(get_field "max_iterations" || true)
-            SKIP_INCREMENT=1
-            # 落入下方 block JSON 构造
-        else
-            # 还有任务但 AI 未信号高信心 → 释放，等用户操作
-            bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
-            cleanup_active "$HOOK_SESSION"
-            exit 0
-        fi
-    # Case 3: 单任务模式 → 正常清理（保留 requirements 文件夹，移除 active 指针）
-    else
-        bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
-        cleanup_active "$HOOK_SESSION"
-        exit 0
-    fi
-fi
-
-# ── 7. 审批门检查 ──
+# ── 3. 审批门 ──
 
 if [[ -n "$GATE" ]]; then
     bash "$SCRIPT_DIR/notify.sh" "$GATE" 2>/dev/null || true
-    # 放行退出，等待用户回来审批
     exit 0
 fi
 
-# ── 8. max_iterations 检查 ──
+# ── 4. phase=done → 清理 ──
+
+if [[ "$PHASE" == "done" ]]; then
+    bash "$SCRIPT_DIR/notify.sh" complete 2>/dev/null || true
+    cleanup_active "$HOOK_SESSION"
+    exit 0
+fi
+
+# ── 5. max_iterations ──
+
+[[ ! "$ITERATION" =~ ^[0-9]+$ ]] && ITERATION=0
+[[ ! "$MAX_ITERATIONS" =~ ^[0-9]+$ ]] && MAX_ITERATIONS=30
 
 if [[ $MAX_ITERATIONS -gt 0 ]] && [[ $ITERATION -ge $MAX_ITERATIONS ]]; then
-    echo "🛑 autopilot: 达到最大迭代次数 ($MAX_ITERATIONS)。" >&2
+    echo "autopilot: 达到最大迭代次数 ($MAX_ITERATIONS)。" >&2
     bash "$SCRIPT_DIR/notify.sh" error 2>/dev/null || true
     cleanup_active "$HOOK_SESSION"
     exit 0
 fi
 
-# ── 9. 递增 iteration（自动链接创建的新状态文件跳过递增） ──
+# ── 6. 递增 iteration ──
 
-if [[ "$SKIP_INCREMENT" -eq 0 ]]; then
-    NEXT_ITERATION=$((ITERATION + 1))
-    set_field "iteration" "$NEXT_ITERATION"
-else
-    NEXT_ITERATION="$ITERATION"
-fi
-
-# ── 10. 构造 block JSON ──
-# 注意：macOS bash 3.2 有 multibyte bug，$VAR 后紧跟全角标点会吞掉变量值。
-# 所有变量必须用 ${VAR} 花括号界定。
-
-# design 阶段使用 Plan Mode（auto_approve 时跳过 Plan Mode）
-AUTO_APPROVE=$(get_field "auto_approve" || true)
-PLAN_MODE=$(get_field "plan_mode" || true)
-MODE=$(get_field "mode" || true)
-REPOS_FILE=$(get_field "repos_file" || true)
-
-# Multi-repo 追加提示
-MULTI_REPO_HINT=""
-if [[ "$MODE" == "multi-repo" ]] && [[ -n "$REPOS_FILE" ]]; then
-    MULTI_REPO_HINT=" ⚠️ Multi-repo 模式: repos 配置文件在 ${REPOS_FILE}."
-fi
-
-if [[ "$PHASE" == "design" ]]; then
-    if [[ "$MODE" == "multi-repo" ]]; then
-        # Multi-repo design: 需要分析涉及哪些 repo
-        if [[ "$AUTO_APPROVE" == "true" ]]; then
-            PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述.${MULTI_REPO_HINT} auto_approve=true: 跳过 Plan Mode, 直接写设计文档到状态文件. ⚠️ Multi-repo 关键步骤: (1) 读取 ${REPOS_FILE} 了解可用仓库; (2) 分析目标涉及哪些 repo, 用 yq 命令更新 repos.yaml 中对应 repo 的 involved=true; (3) 设计文档中明确各 repo 的变更职责. 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet). 按照 autopilot skill 的 Phase: design + Multi-Repo 模式指引执行."
-        elif [[ "$PLAN_MODE" == "deep" ]]; then
-            PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述.${MULTI_REPO_HINT} plan_mode=deep: 先执行 Deep Design 交互探索流程. ⚠️ Multi-repo 关键步骤: (1) 读取 ${REPOS_FILE} 了解可用仓库; (2) 探索各 repo 结构, 确定涉及范围; (3) 用 yq 命令更新 repos.yaml 中对应 repo 的 involved=true; (4) 设计文档中明确各 repo 的变更职责. 交互探索完成后调用 EnterPlanMode. ⚠️ ExitPlanMode 前必须启动 plan-reviewer sub-agent. 按照 autopilot skill 指引执行."
-        else
-            PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述, 然后立即调用 EnterPlanMode.${MULTI_REPO_HINT} ⚠️ Multi-repo 关键步骤: (1) 在 Plan Mode 内读取 ${REPOS_FILE} 了解可用仓库; (2) 探索各 repo 结构, 确定涉及范围; (3) 用 yq 命令更新 repos.yaml 中对应 repo 的 involved=true; (4) 设计文档中明确各 repo 的变更职责. ⚠️ ExitPlanMode 前必须启动 plan-reviewer sub-agent. 按照 autopilot skill 的 Phase: design + Multi-Repo 模式指引执行."
-        fi
-    elif [[ "$AUTO_APPROVE" == "true" ]]; then
-        PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述. auto_approve=true: 跳过 Plan Mode, 直接写设计文档到状态文件. ⚠️ 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案, 参见 references/plan-reviewer-prompt.md. 审查通过则推进到 implement; 失败则回退到正常 Plan Mode (设置 auto_approve: false). 按照 autopilot skill 的 Phase: design 指引执行."
-    elif [[ "$PLAN_MODE" == "deep" ]]; then
-        PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述. plan_mode=deep: 先执行 Deep Design 交互探索流程（参见 references/deep-design-guide.md），包括项目上下文探索、视觉伴侣征求、逐个澄清问题(AskUserQuestion)、提出 2-3 种方案. 交互探索完成后再调用 EnterPlanMode 写正式设计文档. ⚠️ 在 ExitPlanMode 之前, 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案, 参见 references/plan-reviewer-prompt.md. 审查通过再 ExitPlanMode. 产出物写入 task_dir: $(get_field 'task_dir'). 按照 autopilot skill 的 Phase: design 指引执行."
-    else
-        PROMPT="读取 ${STATE_FILE} 状态文件获取目标描述, 然后立即调用 EnterPlanMode 工具进入 Plan Mode. 不要在调用 EnterPlanMode 之前做任何代码探索. 所有探索和设计工作必须在 Plan Mode 内完成. ⚠️ 在 ExitPlanMode 之前, 必须使用 Agent 工具启动 plan-reviewer sub-agent (model: sonnet) 审查设计方案, 参见 references/plan-reviewer-prompt.md. 审查通过再 ExitPlanMode. 按照 autopilot skill 的 Phase: design 指引执行."
-    fi
-elif [[ "$PHASE" == "implement" ]]; then
-    if [[ "$MODE" == "multi-repo" ]]; then
-        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: implement, 迭代: ${NEXT_ITERATION}.${MULTI_REPO_HINT} ⚠️ Multi-repo implement 流程: (1) 读取 ${REPOS_FILE} 获取 involved=true 的 repo 列表; (2) 为每个 involved repo 创建 grove worktree: cd <repo_path> && grove --plain add autopilot-${TASK_SLUG:-task} --create, 解析输出最后一行获取 worktree 路径; (3) 用 yq 更新 repos.yaml 中对应 repo 的 worktree 字段; (4) 红蓝对抗: 蓝队和红队 agent prompt 中传入所有 worktree 路径, 蓝队在各 worktree 中编码, 红队仅看设计文档; (5) 合流后更新状态文件. 详细工作流参见 references/implement-phase.md Multi-Repo 章节."
-    else
-        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: implement, 迭代: ${NEXT_ITERATION}. ⚠️ 红蓝对抗铁律: (1) 从状态文件读取设计文档, 检查是否有领域 Skill 委托; (2) 无委托时必须使用 Agent 工具在同一轮响应中同时启动蓝队和红队两个并行 sub-agent (model: sonnet), prompt 模板参见 references/blue-team-prompt.md 和 references/red-team-prompt.md; (3) 红队绝对不能读取蓝队新写的实现代码——红队只看设计文档; (4) 两个 Agent 都完成后合流: 收集产出、写入红队测试文件、更新状态文件. 详细工作流参见 references/implement-phase.md. 按照 autopilot skill 的 Phase: implement 指引执行."
-    fi
-elif [[ "$PHASE" == "qa" ]]; then
-    if [[ "$MODE" == "multi-repo" ]]; then
-        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: qa, 迭代: ${NEXT_ITERATION}.${MULTI_REPO_HINT} ⚠️ Multi-repo QA: (1) 读取 ${REPOS_FILE} 获取各 repo 的 worktree 路径; (2) 对每个 worktree 执行 git -C <worktree> diff 聚合变更分析; (3) 测试命令在各 worktree 中分别执行; (4) Tier 1.5 真实场景验证覆盖所有涉及的 repo. 按照 autopilot skill 的指引执行 QA 工作流."
-    else
-        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: qa, 迭代: ${NEXT_ITERATION}. ⚠️ Tier 1.5 铁律: (1) 必须执行设计文档中的每一个真实测试场景, 不允许跳过任何场景; (2) 结果判定前先做场景计数匹配——统计报告中执行:标记数量 E 与设计文档场景总数 N, E<N 则有场景被跳过, 必须补做. 按照 autopilot skill 的指引执行当前阶段的工作流."
-    fi
-elif [[ "$PHASE" == "merge" ]]; then
-    if [[ "$MODE" == "multi-repo" ]]; then
-        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: merge, 迭代: ${NEXT_ITERATION}.${MULTI_REPO_HINT} ⚠️ Multi-repo merge: (1) 读取 ${REPOS_FILE} 获取各 repo 的 worktree 路径; (2) 对每个有 worktree 的 repo 独立启动 commit-agent (model: sonnet), 每个 agent 只处理该 repo 的 diff; (3) 知识提取: 分析知识与哪个 repo 相关性最大, 写入该 repo worktree 的 .autopilot/ 目录并在 worktree 内 git commit; (4) 所有 repo 提交完成后设 knowledge_extracted, 再设 phase: done. 参见 references/merge-phase.md Multi-Repo 章节."
-    else
-        PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: merge, 迭代: ${NEXT_ITERATION}. ⚠️ merge 阶段必须使用 Agent 工具启动 commit-agent (model: sonnet), 参见 references/commit-agent-prompt.md 模板. 不要使用 Skill: autopilot-commit. 完成知识提取后, 用 Edit 设置 knowledge_extracted 为 true 或 skipped, 再设 phase: done. 按照 autopilot skill 的 Phase: merge 指引执行."
-    fi
-else
-    PROMPT="读取 ${STATE_FILE} 状态文件, 当前阶段: ${PHASE}, 迭代: ${NEXT_ITERATION}. 按照 autopilot skill 的指引执行当前阶段的工作流."
-fi
-SYSTEM_MSG="autopilot iteration ${NEXT_ITERATION} | phase: ${PHASE}${MODE:+ | mode: $MODE}"
-
-jq -n \
-    --arg prompt "$PROMPT" \
-    --arg msg "$SYSTEM_MSG" \
-    '{
-        "decision": "block",
-        "reason": $prompt,
-        "systemMessage": $msg
-    }'
-
+set_field "iteration" "$((ITERATION + 1))"
 exit 0

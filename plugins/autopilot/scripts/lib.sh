@@ -275,14 +275,13 @@ get_first_ready_task() {
 # ── Brief 模式状态文件创建 ────────────────────────────────────
 
 # 为项目 DAG 中的任务创建 brief 模式状态文件。
-# 参数: task_file session_id max_iterations max_retries auto_approve
+# 参数: task_file session_id max_iterations auto_approve
 # 注意: 调用前必须先通过 setup_requirement_dir 设置 STATE_FILE 和 TASK_DIR
 create_brief_state_file() {
     local brief_file="$1"
     local session_id="${2:-}"
     local max_iterations="${3:-30}"
-    local max_retries="${4:-3}"
-    local auto_approve="${5:-false}"
+    local auto_approve="${4:-false}"
 
     local brief_content
     brief_content=$(head -100 "$brief_file")
@@ -314,13 +313,6 @@ $(head -50 "$handoff")
 $(head -60 "$design_file")"
     fi
 
-    # 知识库提示
-    local knowledge_hint=""
-    if [[ -f "$PROJECT_ROOT/.autopilot/index.md" ]]; then
-        knowledge_hint="
-> 📚 项目知识库已存在: .autopilot/。design 阶段请先加载相关知识上下文。"
-    fi
-
     mkdir -p "$(dirname "$STATE_FILE")"
 
     cat > "$STATE_FILE" <<EOF
@@ -330,14 +322,9 @@ phase: "design"
 gate: ""
 iteration: 1
 max_iterations: $max_iterations
-max_retries: $max_retries
-retry_count: 0
 mode: "single"
-plan_mode: ""
-brief_file: "$brief_file"
-next_task: ""
 auto_approve: $auto_approve
-knowledge_extracted: ""
+slug: "$(basename "$TASK_DIR")"
 task_dir: "$TASK_DIR"
 session_id: $session_id
 started_at: "$(now_iso)"
@@ -347,7 +334,6 @@ started_at: "$(now_iso)"
 $brief_content
 $handoff_content
 $design_summary
-$knowledge_hint
 
 ## 设计文档
 (待 design 阶段填充)
@@ -538,14 +524,9 @@ phase: "qa"
 gate: ""
 iteration: 1
 max_iterations: 10
-max_retries: 2
-retry_count: 0
 mode: "project-qa"
-plan_mode: ""
-brief_file: ""
-next_task: ""
 auto_approve: true
-knowledge_extracted: ""
+slug: "$(basename "$TASK_DIR")"
 task_dir: "$TASK_DIR"
 session_id: $session_id
 started_at: "$(now_iso)"
