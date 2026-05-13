@@ -1,0 +1,85 @@
+CLAUDE.md
+  2d84cf758cee70ee 51,53,56,61-66,68,71-74,77,289-301
+plugins/autopilot/README.md
+  2d84cf758cee70ee 1,3,5-14,19-23,30,33,35-37,45-47,49-53,57-63,65,67,69-73
+plugins/autopilot/scripts/setup.sh
+  2d84cf758cee70ee 93,99,468,480-482,485,587-591,607,610,619,663,666
+plugins/autopilot/scripts/lib.sh
+  2d84cf758cee70ee 278,284,327,529
+docs/autopilot-v4-refactor-design.md
+  2d84cf758cee70ee 1-200
+plugins/autopilot/skills/autopilot/SKILL.md
+  2d84cf758cee70ee 8,10,12-13,18-23,28-31,33,35,37-45,49,51,54-77,80-83,87,89,92-119,122-125,129,131-134,136-143,145-148,150-152,154-157,159-160,164,166,168-169,171,173-174,178,180-203,205,209,211,213-219,221-223,225-229,233,237-246,250,252,254,256,258-266
+plugins/autopilot/scripts/stop-hook.sh
+  2d84cf758cee70ee 3-5,7,14,20,28,36,42,49,51-52,57,59-60,62-66,69,71
+plugins/autopilot/.claude-plugin/plugin.json
+  2d84cf758cee70ee 3
+.claude-plugin/marketplace.json
+  2d84cf758cee70ee 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.7",
+  "base_commit_sha": "bfaf04ffdc377e10fe54af325d9e0fb98450ec32",
+  "prompts": {
+    "2d84cf758cee70ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7c3b274-41a6-4b19-8dc3-78f126554e11",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 513,
+      "total_deletions": 1183,
+      "accepted_lines": 513,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 194,
+          "deletions": 713,
+          "accepted_lines": 194
+        },
+        "CLAUDE.md": {
+          "additions": 28,
+          "deletions": 22,
+          "accepted_lines": 28
+        },
+        "plugins/autopilot/scripts/stop-hook.sh": {
+          "additions": 22,
+          "deletions": 300,
+          "accepted_lines": 22
+        },
+        "plugins/autopilot/README.md": {
+          "additions": 46,
+          "deletions": 90,
+          "accepted_lines": 46
+        },
+        "docs/autopilot-v4-refactor-design.md": {
+          "additions": 200,
+          "accepted_lines": 200
+        },
+        "plugins/autopilot/scripts/lib.sh": {
+          "additions": 4,
+          "deletions": 23,
+          "accepted_lines": 4
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 17,
+          "deletions": 33,
+          "accepted_lines": 17
+        }
+      }
+    }
+  }
+}
