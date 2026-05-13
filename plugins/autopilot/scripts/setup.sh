@@ -87,17 +87,16 @@ autopilot — AI 自动驾驶工程套件
   /autopilot cancel                      取消并清理
 
 选项:
-  --deep                    深度设计模式（交互式 Q&A + 方案对比 + 规格审查）
   --project                 强制项目模式（跳过复杂度检测）
   --single                  强制单任务模式（跳过复杂度检测）
   --multi-repo              强制多仓库模式（跨 repo 编排）
+  --slug <english-slug>     指定英文任务目录名（格式: kebab-case）
   --max-iterations <n>      最大迭代次数 (默认: 30)
-  --max-retries <n>         单阶段最大重试次数 (默认: 3)
 
 示例:
   /autopilot 实现用户头像上传功能，支持裁剪和压缩
-  /autopilot --deep 设计新的推荐算法架构
   /autopilot --project 复刻 Happy 到 Raven 生态
+  /autopilot --slug session-retrieval-superadmin 按OM需求回捞Session
   /autopilot 001-wire-schema
   /autopilot continue
   /autopilot next
@@ -178,7 +177,6 @@ HELP_EOF
             exit 0
         fi
         set_field "gate" '""'
-        set_field "retry_count" "0"
         # design 审批由 Plan Mode 处理，这里只处理 review-accept
         case "$GATE" in
             review-accept)
@@ -205,8 +203,6 @@ HELP_EOF
             GATE=$(get_field "gate")
             ITERATION=$(get_field "iteration")
             MAX_ITER=$(get_field "max_iterations")
-            RETRY=$(get_field "retry_count")
-            MAX_RETRY=$(get_field "max_retries")
             STARTED=$(get_field "started_at")
             MODE=$(get_field "mode" || true)
 
@@ -216,7 +212,6 @@ HELP_EOF
             echo "阶段:     $PHASE"
             echo "审批门:   ${GATE:-无}"
             echo "迭代:     $ITERATION / $MAX_ITER"
-            echo "重试:     $RETRY / $MAX_RETRY"
             echo "开始时间: $STARTED"
             [[ -n "$MODE" ]] && echo "模式:     $MODE"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -468,10 +463,9 @@ fi
 # 解析参数
 PROMPT_PARTS=()
 MAX_ITERATIONS=30
-MAX_RETRIES=3
 MODE_OVERRIDE=""
-PLAN_MODE_OVERRIDE=""
 BRIEF_FILE=""
+SLUG=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -483,12 +477,12 @@ while [[ $# -gt 0 ]]; do
             MAX_ITERATIONS="$2"
             shift 2
             ;;
-        --max-retries)
-            if [[ -z "${2:-}" ]] || ! [[ "$2" =~ ^[0-9]+$ ]]; then
-                echo "❌ --max-retries 需要一个正整数参数"
+        --slug)
+            if [[ -z "${2:-}" ]]; then
+                echo "❌ --slug 需要一个参数"
                 exit 0
             fi
-            MAX_RETRIES="$2"
+            SLUG="${2}"
             shift 2
             ;;
         --project)
@@ -497,10 +491,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         --single)
             MODE_OVERRIDE="single"
-            shift
-            ;;
-        --deep)
-            PLAN_MODE_OVERRIDE="deep"
             shift
             ;;
         --multi-repo)
@@ -594,7 +584,11 @@ elif [[ -d "$PROJECT_ROOT/.claude/knowledge" ]]; then
 fi
 
 # 生成 task slug 并创建 requirements 文件夹
-TASK_SLUG=$(generate_task_slug "$GOAL")
+if [[ -n "$SLUG" ]]; then
+    TASK_SLUG="${SLUG}"
+else
+    TASK_SLUG=$(generate_task_slug "$GOAL")
+fi
 setup_requirement_dir "$TASK_SLUG" "$CLAUDE_SESSION_ID"
 
 # Multi-repo: 生成 repos.yaml
@@ -610,10 +604,10 @@ fi
 
 # Brief 模式：从任务简报文件启动
 if [[ -n "$BRIEF_FILE" ]]; then
-    create_brief_state_file "$BRIEF_FILE" "$CLAUDE_SESSION_ID" "$MAX_ITERATIONS" "$MAX_RETRIES" "false"
+    create_brief_state_file "$BRIEF_FILE" "$CLAUDE_SESSION_ID" "$MAX_ITERATIONS" "false"
 
 else
-    # 正常模式状态文件
+    # 正常模式状态文件（v4 精简字段）
     cat > "$STATE_FILE" <<EOF
 ---
 active: true
@@ -621,14 +615,8 @@ phase: "design"
 gate: ""
 iteration: 1
 max_iterations: $MAX_ITERATIONS
-max_retries: $MAX_RETRIES
-retry_count: 0
 mode: "${MODE_OVERRIDE}"
-plan_mode: "${PLAN_MODE_OVERRIDE}"
-brief_file: ""
-next_task: ""
-auto_approve: false
-knowledge_extracted: ""
+slug: "${TASK_SLUG}"
 repos_file: "${REPOS_FILE_PATH}"
 task_dir: "$TASK_DIR"
 session_id: $CLAUDE_SESSION_ID
@@ -672,13 +660,10 @@ elif [[ "$MODE_OVERRIDE" == "multi-repo" ]]; then
     PHASE_FLOW="design → grove worktree → implement → qa → per-repo merge"
 elif [[ "$MODE_OVERRIDE" == "project" ]]; then
     DISPLAY_GOAL="$GOAL"
-    PHASE_FLOW="design → 复杂度检测 → 架构设计 → DAG 创建 → done"
-elif [[ "$PLAN_MODE_OVERRIDE" == "deep" ]]; then
-    DISPLAY_GOAL="$GOAL"
-    PHASE_FLOW="deep design（Q&A → 方案对比 → 规格审查）→ 审批 → implement → qa → 审批 → merge"
+    PHASE_FLOW="design → 架构设计 → DAG 创建 → done"
 else
     DISPLAY_GOAL="$GOAL"
-    PHASE_FLOW="design → 审批 → implement → qa → 审批 → merge"
+    PHASE_FLOW="design → implement → qa → merge"
 fi
 
 cat <<EOF
@@ -686,7 +671,6 @@ cat <<EOF
 
 目标: $DISPLAY_GOAL
 最大迭代: $MAX_ITERATIONS
-最大重试: $MAX_RETRIES
 状态文件: $STATE_FILE ${IS_WORKTREE}
 需求文件夹: $TASK_DIR
 EOF

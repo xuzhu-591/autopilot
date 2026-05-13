@@ -1,35 +1,40 @@
-# autopilot — AI 自动驾驶工程套件
+# autopilot v4 — 子代理驱动工程闭环
 
-从目标描述到代码合并，全程自动化。人只在两个审批门介入：**设计审批** 和 **验收审批**。
+从目标描述到代码合并，全程自动化。**子代理驱动线性流程**，每个阶段硬编码关键步骤，不再依赖 stop-hook prompt 注入。
+
+## v4 核心变更
+
+| 维度 | v3 | v4 |
+|------|-----|-----|
+| 阶段推进 | stop-hook 注入 prompt（拉式） | 主对话主动执行（推式） |
+| Plan Reviewer | 事后 changelog grep 检测 + 回滚 | design 阶段硬编码步骤，不可能跳过 |
+| 知识工程 | 弱文本提示 + 知识提取守卫 | design step 0 强制加载 + merge 独立 commit |
+| Slug | 中文目标截取 | AI 预生成英文 --slug |
+| Stop-hook | 350 行（五重职责） | ~60 行（纯门卫） |
+| 上下文传递 | 内联 prompt 注入 | 子代理 prompt 引用文件路径，自举 Read |
 
 ## 工作流程
 
 ```
-用户输入目标 → AI 设计方案 → [审批门 1] → 并行分叉:
-    蓝队(编码) + 红队(仅看设计写验收测试) → 合流 → AI 全面测试(红队测试优先)
-    → AI 自动修复 ←→ AI 重新测试(循环) → [审批门 2] → AI 合并代码
+用户输入目标 → AI生成英文slug → setup创建task_dir
+  → design: 知识加载 → Plan Mode → plan-reviewer(强制) → 审批
+  → implement: grove worktree → 并行蓝队+红队(信息隔离) → 合流
+  → qa: Tier 0/1/1.5/2 → 报告+判定
+  → merge: commit-agent(代码提交) → 知识提取(独立commit) → done
 ```
 
 ## 快速开始
 
 ```bash
 # 推荐：在 worktree 中运行（隔离代码改动）
-claude -w autopilot-avatar
+grove --plain add autopilot-my-feature --create
 
 # 启动全流程闭环
-/autopilot 实现用户头像上传功能，支持裁剪和压缩
+/autopilot --slug user-avatar-upload 实现用户头像上传功能
 
-# AI 自动完成设计后，审批设计方案
-/autopilot approve
-
-# 或者要求修改
-/autopilot revise 需要支持 WebP 格式
-
-# AI 自动完成编码和测试后，验收代码
-/autopilot approve
-
-# 独立使用智能提交（不需要全流程）
-/autopilot commit
+# 审批
+/autopilot approve     # 批准当前审批门
+/autopilot revise <反馈> # 要求修改
 ```
 
 ## 命令
@@ -37,81 +42,32 @@ claude -w autopilot-avatar
 | 命令 | 说明 |
 |------|------|
 | `/autopilot <目标>` | 启动全流程闭环 |
-| `/autopilot commit` | 智能提交（React 优化 + 代码测验 + 任务同步） |
-| `/autopilot doctor` | 工程健康度诊断（评估 autopilot 兼容性） |
-| `/autopilot doctor --fix` | 诊断 + 自动修复低分项 |
+| `/autopilot --slug <slug> <目标>` | 指定英文 slug 启动 |
+| `/autopilot commit` | 智能提交 |
+| `/autopilot doctor [--fix]` | 工程健康度诊断 |
 | `/autopilot approve` | 批准当前审批门 |
-| `/autopilot revise <反馈>` | 要求修改当前阶段产出 |
-| `/autopilot status` | 查看当前状态 |
-| `/autopilot cancel` | 取消并清理 |
-| `/autopilot --help` | 显示帮助 |
+| `/autopilot revise <反馈>` | 要求修改 |
+| `/autopilot status` | 查看状态 |
+| `/autopilot cancel` | 取消 |
+| `/autopilot continue` | 恢复之前未完成的任务 |
+| `/autopilot next` | 查找就绪任务（项目模式） |
 
 ## 选项
 
-| 选项 | 默认值 | 说明 |
-|------|--------|------|
-| `--max-iterations` | 30 | 最大迭代次数 |
-| `--max-retries` | 3 | QA 失败后自动修复的最大重试次数 |
+| 选项 | 说明 |
+|------|------|
+| `--slug <english-slug>` | 指定英文任务目录名（kebab-case） |
+| `--multi-repo` | 强制多仓库模式 |
+| `--project` | 强制项目模式 |
+| `--single` | 强制单任务模式 |
+| `--max-iterations <n>` | 最大迭代次数 (默认: 30) |
 
-## 阶段说明
+## Worktree 管理
 
-### 1. Design（设计）
-AI 分析目标，探索代码库，产出设计文档和实现计划。完成后进入审批门。
+使用 `grove` 工具：`grove -h` 查看使用说明。
 
-### 2. Implement（实现）— 红蓝对抗
-并行启动两个 AI Agent：
-- **蓝队（实现者）**：按计划逐任务编码，TDD 模式
-- **红队（验证者）**：仅看设计文档编写验收测试，不能看实现代码
-
-信息隔离确保测试独立于实现，验证"应该做什么"而非"已经做了什么"。
-
-### 3. QA（质量检查）
-五层质量检查：
-- **Tier 0**: 红队验收测试（最高优先级，失败 = 实现不符合设计）
-- **Tier 1**: 类型检查、Lint、单元测试、构建验证（融合 local-test 智能验证策略）
-- **Tier 2a**: 设计符合性（先做）
-- **Tier 2b**: 代码质量（后做）— 模式一致性、安全审查、边界处理
-- **Tier 3**: Dev server 启动、API 端点验证、导入完整性
-- **Tier 3.5**: 性能保障验证（条件性，需前端项目 + 性能工具就位 + 本次变更涉及前端）
-- **Tier 4**: 回归检查
-
-### 4. Auto-fix（自动修复）
-QA 发现问题时，按系统化调试方法论（观察 → 假设 → 验证 → 修复）逐项修复。**铁律：不允许修改红队测试**——如果实现通不过验收测试，问题在实现而非测试。最多重试 3 次。
-
-### 5. Merge（合并）
-调用 autopilot-commit 完成智能提交，生成完成报告。
-
-## 智能提交（/autopilot commit）
-
-独立于全流程闭环，可单独使用：
-- 三阶段并行执行模型（分析 → 并行优化 → 提交）
-- 自动检测 React 代码并调用最佳实践优化
-- Bugfix 验证：检测到 bugfix 自动补充单测
-- 提交前代码理解测验（监督者视角）
-- CLAUDE.md 智能更新 + 版本自动升级
-- ai-todo 任务同步
-- 高质量中文提交信息
-
-## 工程诊断（/autopilot doctor）
-
-扫描项目工程基础设施，输出 11 维度加权评分（S/A/B/C/D/F 等级）：
-- 测试基础设施（17%）、类型安全（12%）、代码质量工具链（11%）、构建系统（11%）
-- CI/CD（7%）、项目结构（7%）、文档质量（7%）、Git 工作流（7%）
-- 依赖健康（6%）、AI 就绪度（7%）、性能保障（8%）
-
-输出 autopilot 兼容性矩阵（哪些功能可用/降级/不可用）和 Top 3 改进建议。
-
-使用 `--fix` 自动修复低分项（每个修复前确认）。报告保存到 `.autopilot/doctor-report.md`。
-
-## 可追溯性
-
-所有过程记录在 `.autopilot/autopilot.local.md` 状态文件中：
-- 目标描述、设计文档、实现计划
-- 红队验收测试和验收标准
-- 每轮 QA 报告（完整保留历史）
-- 变更日志（时间戳 + 每个关键事件）
-
-## 与其他插件的配合
-
-- **worktree（内置）**: 建议在 worktree 中运行，隔离代码改动
-- **ralph-loop**: 两者互斥（共用 Stop hook 机制）
+```bash
+grove --plain add <branch-name> --create    # 创建 worktree
+grove --plain list                           # 列出 worktree
+grove --plain remove <branch-name>           # 删除 worktree
+```
