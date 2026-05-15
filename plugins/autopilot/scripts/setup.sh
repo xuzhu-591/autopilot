@@ -587,6 +587,18 @@ fi
 if [[ -n "$SLUG" ]]; then
     TASK_SLUG="${SLUG}"
 else
+    # 检查目标是否包含非 ASCII 字符（中文等）
+    if printf '%s' "$GOAL" | LC_ALL=C grep -q '[^ -~]'; then
+        echo "❌ 目标包含非 ASCII 字符，需要提供英文 slug。"
+        echo ""
+        echo "请根据目标语义生成一个英文 kebab-case slug（3-5 个单词），然后重新调用："
+        echo "  /autopilot --slug <english-slug> $GOAL"
+        echo ""
+        echo "示例："
+        echo "  目标「统一 session 归档的分析链路」→ --slug unify-session-archive-analysis"
+        echo "  目标「给 raven-cli 下发命令时判断版本」→ --slug cli-version-gate"
+        exit 0
+    fi
     TASK_SLUG=$(generate_task_slug "$GOAL")
 fi
 setup_requirement_dir "$TASK_SLUG" "$CLAUDE_SESSION_ID"
