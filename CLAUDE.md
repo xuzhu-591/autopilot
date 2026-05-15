@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v4.0.0)
+### 3. autopilot (v4.0.1)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（子代理驱动线性流程 + 蓝图对抗 + 五层 QA + 知识工程 + 智能提交 + 工程诊断 + Worktree 管理）
 
@@ -285,6 +285,12 @@
 ---
 
 ## 更新日志
+
+### 2026-05-15
+- autopilot 升级至 v4.0.1：强制英文 slug 检查
+  - setup.sh：目标含非 ASCII 字符且未传 `--slug` 时，拒绝启动并返回明确错误信息
+  - AI 看到错误后自行生成英文 kebab-case slug，重新调用 `/autopilot --slug <slug> <目标>`
+  - 根因：v4.0.0 设计意图为"AI 预生成 --slug"，但实际 `generate_task_slug()` 仍直接截取中文前30字符
 
 ### 2026-05-13
 - autopilot 升级至 v4.0.0：子代理驱动线性流程重构（不兼容变更）
