@@ -90,6 +90,8 @@ autopilot — AI 自动驾驶工程套件
   --project                 强制项目模式（跳过复杂度检测）
   --single                  强制单任务模式（跳过复杂度检测）
   --multi-repo              强制多仓库模式（跨 repo 编排）
+  --fast                    快速模式（跳过 brainstorm Q&A）
+  --standard                标准模式（强制 brainstorm 需求探索）
   --slug <english-slug>     指定英文任务目录名（格式: kebab-case）
   --max-iterations <n>      最大迭代次数 (默认: 30)
 
@@ -466,6 +468,7 @@ MAX_ITERATIONS=30
 MODE_OVERRIDE=""
 BRIEF_FILE=""
 SLUG=""
+FAST_MODE_OVERRIDE=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -495,6 +498,19 @@ while [[ $# -gt 0 ]]; do
             ;;
         --multi-repo)
             MODE_OVERRIDE="multi-repo"
+            shift
+            ;;
+        --fast)
+            FAST_MODE_OVERRIDE="true"
+            shift
+            ;;
+        --standard)
+            FAST_MODE_OVERRIDE="false"
+            shift
+            ;;
+        --deep)
+            echo "⚠️  --deep 已弃用，等价于 --standard（走 brainstorm 流程）。" >&2
+            FAST_MODE_OVERRIDE="false"
             shift
             ;;
         *)
@@ -625,6 +641,7 @@ else
 active: true
 phase: "design"
 gate: ""
+fast_mode: "${FAST_MODE_OVERRIDE}"
 iteration: 1
 max_iterations: $MAX_ITERATIONS
 mode: "${MODE_OVERRIDE}"

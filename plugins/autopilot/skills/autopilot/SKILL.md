@@ -48,6 +48,34 @@ description: 当用户需要从目标描述到代码合并的端到端自动化�
 
 ## Phase: design
 
+完成设计文档并获得用户审批后进入实现阶段。按以下优先级决定设计模式：
+
+1. `auto_approve: true` → Auto-Approve 快速路径
+2. `fast_mode: true` → Fast Mode 快速路径
+3. 其他（默认）→ Standard Design 模式（含 brainstorm）
+
+三模式完整步骤 diff 见 [references/design-modes.md](references/design-modes.md)。失败回退：任何 Auto-Approve / Fast Mode 环节失败 → 回退人工审批。
+
+### 模式自适应（fast_mode 为空时）
+
+当 `fast_mode` 字段为空（未通过 `--fast` / `--standard` 指定）时，AI 在步骤 0 后自适应判断：
+- **默认选 fast**：bug fix、小改动、单概念跨文件搜索替换
+- **选 standard**：架构权衡、新抽象引入、探索未知模块
+
+判断后 Edit 设置 `fast_mode` 字段，再进入对应分支。
+
+### Standard Design 模式（默认，含 brainstorm）
+
+委托 brainstorm skill 完成需求探索：
+
+    Skill: "autopilot-brainstorm"
+
+brainstorm 完成后在 $TASK_DIR/brainstorm.md 输出共识总结。主 SKILL 接力：读取 brainstorm.md → 继续下方步骤 2-4。兼容性：`plan_mode: "deep"` 同样走此分支（字段已弃用）。
+
+### Fast Mode 快速路径（仅 fast_mode=true 时）
+
+跳过 brainstorm Q&A，1 个 Explore agent 探索代码；不启动 scenario-generator / plan-reviewer Agent，编排器按 references/plan-reviewer-prompt.md 6 维度自审；自审通过后直接 `phase: "implement"`（跳过 AskUserQuestion 审批，fast 信任 AI 判断），自审失败修正一次仍失败才回退 AskUserQuestion 交用户。
+
 ### 步骤
 
 ```
@@ -56,19 +84,23 @@ step 0: 知识加载
   ├─ Read decisions.md + patterns.md + index.md（如存在）
   └─ 如无知识文件则跳过，不阻塞
 
-step 1: 需求澄清（按需）
-  ├─ 目标模糊时使用 AskUserQuestion 澄清
-  └─ 目标明确时直接跳过
+step 0.5: 模式自适应（仅 fast_mode 为空时）
+  ├─ 根据目标复杂度判断 fast/standard
+  └─ Edit state.md 设置 fast_mode 字段
 
-step 2: Plan Mode 设计
-  ├─ 调用 EnterPlanMode 进入 Plan Mode
-  ├─ 使用 Explore agent（1-2 个）分析代码库
-  ├─ 并行启动验收场景生成器 Agent (sonnet)，prompt 参考 references/scenario-generator-prompt.md
-  ├─ 写 design.md 到 task_dir
-  └─ ExitPlanMode 请求审批
+step 1: 分流
+  ├─ fast_mode=true → Fast Mode（直接步骤 2，跳过 brainstorm + plan-reviewer Agent）
+  └─ 其他 → Standard（调用 Skill: "autopilot-brainstorm"，完成后继续步骤 2）
 
-step 3: Plan 审查（⚠️ 必须执行）
-  ├─ 启动 Agent:plan-reviewer (sonnet)，prompt 参考 references/plan-reviewer-prompt.md
+step 2: 设计文档编写
+  ├─ Standard：读取 brainstorm.md 共识 + 使用 Explore agent（1-2 个）分析代码库
+  ├─ Fast：1 个 Explore agent 探索代码
+  ├─ 并行启动验收场景生成器 Agent (sonnet)，prompt 参考 references/scenario-generator-prompt.md（Fast 模式跳过）
+  ├─ 写设计文档到状态文件 ## 设计文档 和 ## 实现计划 区域
+  └─ Standard：ExitPlanMode 请求审批 / Fast：编排器自审
+
+step 3: Plan 审查（⚠️ Standard 模式必须执行，Fast 模式为编排器自审）
+  ├─ Standard：启动 Agent:plan-reviewer (sonnet)，prompt 参考 references/plan-reviewer-prompt.md
   ├─ 输入：{task_dir} 路径 + 目标描述 + design.md + 验收场景
   ├─ PASS → 追加变更日志，继续
   └─ FAIL → 修复设计问题，重审（最多 2 轮）。第 2 轮仍 FAIL 标注交由用户判断
