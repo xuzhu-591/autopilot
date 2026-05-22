@@ -48,12 +48,13 @@
 
 ---
 
-### 3. autopilot (v4.0.1)
+### 3. autopilot (v4.1.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（子代理驱动线性流程 + 蓝图对抗 + 五层 QA + 知识工程 + 智能提交 + 工程诊断 + Worktree 管理）
 
 **包含 Skill**:
 - `autopilot`：全流程闭环编排器（子代理驱动 + 红蓝对抗 + 五层 QA + 知识工程）
+- `autopilot-brainstorm`：design 阶段需求探索代理（逐个问题澄清 + 2-3 方案对比 + 共识输出）
 - `autopilot-commit`：智能提交工具（React 检测、最佳实践优化、代码理解测验、任务同步）
 - `autopilot-doctor`：工程健康度诊断（11 维度评分 + 测试金字塔三层检测 + 性能保障检测 + autopilot 兼容性矩阵 + 自动修复）
 - `worktree-repair`：手动修复已有 worktree 的配置缺失（符号链接 + 依赖安装）
@@ -285,6 +286,15 @@
 ---
 
 ## 更新日志
+
+### 2026-05-22
+- autopilot 升级至 v4.1.0：新增 brainstorm 脑暴模式（三模式设计阶段）
+  - 新增独立 `autopilot-brainstorm` skill：design 阶段通过逐个澄清问题 + 2-3 方案对比达成共识
+  - design 阶段三模式路由：auto_approve → fast → standard(brainstorm)，优先级从高到低
+  - 模式自适应：`fast_mode` 为空时 AI 根据目标复杂度自动判断（默认 fast，架构类走 standard）
+  - setup.sh 新增 `--fast` / `--standard` 参数控制模式，`--deep` 标记为弃用
+  - 状态文件新增 `fast_mode` 三态字段（"" / "true" / "false"）
+  - 新增 `references/design-modes.md` 三模式详细 spec
 
 ### 2026-05-15
 - autopilot 升级至 v4.0.1：强制英文 slug 检查
