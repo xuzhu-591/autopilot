@@ -1,0 +1,69 @@
+.claude-plugin/marketplace.json
+  b9c3e27724814910 32
+plugins/autopilot/skills/autopilot-brainstorm/SKILL.md
+  b9c3e27724814910 1-90
+plugins/autopilot/skills/autopilot/references/design-modes.md
+  b9c3e27724814910 1-57
+plugins/autopilot/scripts/setup.sh
+  b9c3e27724814910 93-94,471,503-513,644
+plugins/autopilot/skills/autopilot/SKILL.md
+  b9c3e27724814910 51-78,87-93,95-100,102-103
+plugins/autopilot/.claude-plugin/plugin.json
+  b9c3e27724814910 3
+CLAUDE.md
+  b9c3e27724814910 51,57,290-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9.preview.0",
+  "base_commit_sha": "88671e1de3cb6cdfad315138171b4088323030eb",
+  "prompts": {
+    "b9c3e27724814910": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61814c2d-5cf8-4269-8847-14ac9a2948fd",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 222,
+      "total_deletions": 16,
+      "accepted_lines": 222,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/references/design-modes.md": {
+          "additions": 57,
+          "accepted_lines": 57
+        },
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 45,
+          "deletions": 13,
+          "accepted_lines": 45
+        },
+        "plugins/autopilot/scripts/setup.sh": {
+          "additions": 17,
+          "accepted_lines": 17
+        },
+        "CLAUDE.md": {
+          "additions": 11,
+          "deletions": 1,
+          "accepted_lines": 11
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot-brainstorm/SKILL.md": {
+          "additions": 90,
+          "accepted_lines": 90
+        }
+      }
+    }
+  }
+}
