@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v4.1.0)
+### 3. autopilot (v4.1.1)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（子代理驱动线性流程 + 蓝图对抗 + 五层 QA + 知识工程 + 智能提交 + 工程诊断 + Worktree 管理）
 
@@ -286,6 +286,12 @@
 ---
 
 ## 更新日志
+
+### 2026-05-25
+- autopilot 升级至 v4.1.1：修复阶段转换后不自动续接的 bug
+  - 根因：v4.0.0 瘦身 stop-hook 时删除了 block JSON 输出，但 SKILL.md 指示 AI 在阶段边界结束响应，导致无机制桥接下一阶段
+  - stop-hook.sh：新增 Section 7 续接输出，phase 未完成且无 gate 时输出 `{"decision":"block","reason":"..."}` 让 Claude Code 自动注入 prompt 续接
+  - SKILL.md：Rule 2/3 措辞修正，消除"主动推进"与"立即停止"的矛盾，明确"结束响应"语义（stop-hook 负责续接）
 
 ### 2026-05-22
 - autopilot 升级至 v4.1.0：新增 brainstorm 脑暴模式（三模式设计阶段）
