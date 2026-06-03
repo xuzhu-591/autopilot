@@ -75,7 +75,29 @@ Delivered: <实际 diff 内容 — 一句话>
 
 **Tier 1: 基础验证**（四项并行）：类型检查(`tsc --noEmit`) | Lint(`eslint`) | 单元测试(`jest/vitest`) | 构建(`npm run build`)，各超时 60s
 
-**Tier 3: 集成验证**（条件性）：Dev server 启动、API 端点验证、导入完整性
+**Tier 3: 集成验证**（条件触发，触发后不可跳过）
+
+触发条件（满足任一即必须执行）：
+- 变更涉及前端组件（.tsx/.vue/.svelte）→ 需 dev server 启动验证渲染
+- 变更涉及 API 端点（route/controller/handler）→ 需端点可达性验证
+- 变更涉及模块导出（index.ts / barrel file / package.json exports）→ 需导入完整性验证
+- 变更涉及服务端启动逻辑（server.ts/app.ts/main.ts）→ 需服务启动验证
+
+检查项：Dev server 启动成功 | API 端点响应 | 导入路径可解析 | 无运行时 crash
+
+**跳过规则**：
+- 触发条件不满足 → 标记 `Tier 3: N/A（无集成验证必要：<原因>）`，正常流转
+- 触发条件满足但跳过 → **必须**在 QA 报告中写入 `Tier 3 跳过原因:` 字段，说明为何无法执行（如：无法启动 dev server 的具体错误）
+- **声明跳过触发人工审批**：Tier 3 被声明跳过时，即便其他 Tier 全绿，也不能走 auto-approve，必须设 `gate: "review-accept"` 让用户确认跳过合理性
+
+#### 防合理化指南（Tier 3 专用）
+
+| 借口 | 现实 |
+|------|------|
+| Tier 1 单测已覆盖 / tsc 通过就够了 | 单测验证逻辑，集成验证真实运行环境；tsc 只保证类型，不保证运行时正确 |
+| dev server 启动太慢 / 太重 | `npm run dev &` + `sleep 8` 即可；Tier 1.5 也要用 dev server，不是额外开销 |
+| 只改了样式 / 只改了文案 | 样式改动可能导致渲染崩溃（CSS Module 引用断裂、Tailwind class 冲突） |
+| CI 会跑集成测试 | QA 阶段的目的就是在 CI 前发现问题；"CI 会验"= 把问题踢给下游 |
 
 **Tier 3.5: 性能保障验证**（条件性，需同时满足以下条件才触发）：
 - 项目是前端/全栈（有 next.config / vite.config / webpack.config + build 产出 HTML）
@@ -203,20 +225,27 @@ Wave 1 完成后统计 Tier 0+1 ❌ 数量：≥3 → 跳过 Wave 1.5/2 直接 a
 
 ### 结果判定
 
-**前置检查**（两步，必须按顺序执行）：
+**前置检查**（三步，必须按顺序执行）：
 
 **步骤 1 — 场景计数匹配**：统计 Tier 1.5 报告中 `执行:` 标记数量 E，对比设计文档验证方案中的实际场景总数 N。E < N → ❌ 有场景被跳过，回去补做 Wave 1.5 中遗漏的场景。
 
 **步骤 2 — 格式检查**：验证 Tier 1.5 报告的每个场景是否都包含 `执行:` 和 `输出:` 标记。如果 Tier 1.5 只有描述性文字而没有实际命令输出，视为 ❌ 未执行，必须回去补做 Wave 1.5。
 
+**步骤 3 — Tier 3 覆盖检查**：检查变更分析中是否满足 Tier 3 触发条件。如满足但报告中 Tier 3 标记为跳过且缺少 `Tier 3 跳过原因:` 字段 → 回去补做 Tier 3。如有跳过原因 → 强制走人工审批（不论其他 Tier 状态）。
+
 - **全部 ✅（可有 ⚠️）** → 更新 frontmatter：`gate: "review-accept"`
+- **Tier 3 声明跳过** → 更新 frontmatter：`gate: "review-accept"`（即便其他全绿，禁止 auto-approve）
 - **有 ❌** → 更新 frontmatter：`phase: "auto-fix"`，在报告末尾列出需修复项清单
 
 #### Auto-Approve 处理
 
-如果 frontmatter `auto_approve` 为 `true` 且全部 ✅：
+如果 frontmatter `auto_approve` 为 `true` 且全部 ✅ 且 Tier 3 未声明跳过：
 - 跳过 `gate: "review-accept"`，直接更新 `phase: "merge"`
 - 追加变更日志：QA 全部通过（auto-approve）
+
+如果 Tier 3 被声明跳过（即便其他全 ✅）：
+- 设置 `auto_approve: false`
+- 设置 `gate: "review-accept"`，报告中注明「Tier 3 集成验证被跳过，需人工确认跳过合理性」
 
 如果有 ❌：
 - 设置 `auto_approve: false`（回退到人工审批）
