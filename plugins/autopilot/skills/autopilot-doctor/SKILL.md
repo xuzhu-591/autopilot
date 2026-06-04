@@ -429,20 +429,20 @@ ls -d types/ src/types/ 2>/dev/null
 | autopilot 功能 | 状态 | 依赖维度 | 说明 |
 |----------------|------|----------|------|
 | 红队验收测试 | ✅/⚠️/❌ | Dim 1 | 需要测试框架；无框架时降级为文本检查清单 |
-| Tier 0: 红队 QA | ✅/⚠️/❌ | Dim 1 | 同上 |
-| Tier 1: 类型检查 | ✅/⚠️/❌ | Dim 2 | 需要 TypeScript/mypy 等 |
-| Tier 1: Lint 检查 | ✅/⚠️/❌ | Dim 3 | 需要 ESLint/Biome 等 |
-| Tier 1: 单元测试 | ✅/⚠️/❌ | Dim 1 | 需要测试框架 |
-| Tier 1: 构建验证 | ✅/⚠️/❌ | Dim 4 | 需要 build 命令 |
-| Tier 3: Dev Server | ✅/⚠️/❌ | Dim 4 | 需要 dev 命令 |
+| T0: 红队 QA | ✅/⚠️/❌ | Dim 1 | 同上 |
+| T1: 类型检查 | ✅/⚠️/❌ | Dim 2 | 需要 TypeScript/mypy 等 |
+| T1: Lint 检查 | ✅/⚠️/❌ | Dim 3 | 需要 ESLint/Biome 等 |
+| T1: 单元测试 | ✅/⚠️/❌ | Dim 1 | 需要测试框架 |
+| T1: 构建验证 | ✅/⚠️/❌ | Dim 4 | 需要 build 命令 |
+| T3 健康检查: Dev Server | ✅/⚠️/❌ | Dim 4 | 需要 dev 命令 |
 | 自动修复 lint | ✅/⚠️/❌ | Dim 3 | 需要 lint:fix script |
 | 智能提交 | ✅ | — | 始终可用 |
-| Tier 1.5: API 集成验证 | ✅/⚠️/❌ | Dim 1 (L2) | 需要 API route 测试基础设施；无时 QA 降级为手工 curl 验证 |
-| Tier 1.5: E2E 冒烟测试 | ✅/⚠️/❌ | Dim 1 (L3) | 需要 Playwright/Cypress；无时 QA 降级为手工浏览器验证 |
+| T3: API 集成验证 | ✅/⚠️/❌ | Dim 1 (L2) | 需要 API route 测试基础设施；无时 QA 降级为手工 curl 验证 |
+| T3: E2E 冒烟测试 | ✅/⚠️/❌ | Dim 1 (L3) | 需要 Playwright/Cypress；无时 QA 降级为手工浏览器验证 |
 | 安全审查（code-quality-reviewer） | ✅/⚠️/❌ | Dim 9 | 需要 input validation 库 + 安全基线；无时审查缺少项目级安全上下文 |
 | 红队契约测试 | ✅/⚠️/❌ | Dim 10 | 有 API schema 时红队可写契约测试；无时依赖设计文档推断 |
 | Worktree 并行开发 | ✅/⚠️/❌ | Dim 8 | 需要 worktree-links 或 .env 可链接 + 端口无硬编码 |
-| Tier 3.5: 性能保障验证 | ✅/⚠️/❌ | Dim 11 + Dim 4 | 需要性能工具 + dev server；无时 QA 跳过 |
+| T5: 性能保障验证 | ✅/⚠️/❌ | Dim 11 + Dim 4 | 需要性能工具 + dev server；无时 QA 跳过 |
 | 性能预算断言（CI 质量门） | ✅/⚠️/❌ | Dim 11 + Dim 5 | 需要 CI 中集成性能检查步骤 |
 
 > ✅ 完全可用 | ⚠️ 降级运行 | ❌ 不可用

@@ -19,7 +19,7 @@
 用户输入目标 → AI生成英文slug → setup创建task_dir
   → design: 知识加载 → Plan Mode → plan-reviewer(强制) → 审批
   → implement: grove worktree → 并行蓝队+红队(信息隔离) → 合流
-  → qa: Tier 0/1/1.5/2 → 报告+判定
+  → qa: T0/T1/T2(Wave1) → T3 场景验证(Wave2) → T4 AI审查(Wave3) → 报告+判定
   → merge: commit-agent(代码提交) → 知识提取(独立commit) → done
 ```
 

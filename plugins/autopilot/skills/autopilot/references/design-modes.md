@@ -9,10 +9,10 @@
 | 模式 | 触发条件 | 跳过的节点 | 失败回退 |
 |------|----------|-----------|----------|
 | Auto-Approve | `auto_approve: true`（auto-chain 设置） | AskUserQuestion 审批 | 设 `auto_approve: false`，回到 Standard 人工审批 |
-| Fast Mode | `fast_mode: true`（启动 `--fast` 或自适应判断） | brainstorm Q&A、scenario-generator、plan-reviewer Agent；Tier 1.5 必做 | 自审失败修正 1 次仍 FAIL → AskUserQuestion 交用户 |
+| Fast Mode | `fast_mode: true`（启动 `--fast` 或自适应判断） | brainstorm Q&A、scenario-generator、plan-reviewer Agent；T3 必做 | 自审失败修正 1 次仍 FAIL → AskUserQuestion 交用户 |
 | Standard | 其他（默认） | 无（全节点保留） | — |
 
-红蓝对抗 / 红队验收测试 / qa Wave 1+1.5 是核心，三模式都保留不动。
+红蓝对抗 / 红队验收测试 / qa Wave 1+2 是核心，三模式都保留不动。
 
 ## §2. Auto-Approve 完整工作流
 
@@ -42,13 +42,13 @@
 
 ## §4. Fast Mode 详细 diff
 
-`fast_mode: true` 时砍掉所有 plan-review 类节点（红蓝对抗 / qa Wave 1+1.5 是核心，保留不动）：
+`fast_mode: true` 时砍掉所有 plan-review 类节点（红蓝对抗 / qa Wave 1+2 是核心，保留不动）：
 
 | 阶段 | Fast Mode 行为 |
 |------|---------------|
 | design | 知识加载 → **1 个** Explore agent → 设计文档写入状态文件 → 按 `plan-reviewer-prompt.md` 6 维度**自审**（编排器 inline，不启动 scenario-generator / plan-reviewer Agent，不做 brainstorm Q&A）→ 自审通过 → 直接 `phase: "implement"`（跳过 AskUserQuestion 审批，fast 信任 AI 判断） |
 | implement | blue-team / red-team 双 Agent 保留不变 |
-| qa | Tier 1.5 必做铁律不变 |
+| qa | T3 必做铁律不变 |
 
 **自适应判断**（`fast_mode` 为空时由 AI 在步骤 0.5 决定）：
 

@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v4.2.0)
+### 3. autopilot (v4.3.0)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（子代理驱动线性流程 + 蓝图对抗 + 五层 QA + 知识工程 + 智能提交 + 工程诊断 + Worktree 管理）
 
@@ -286,6 +286,16 @@
 ---
 
 ## 更新日志
+
+### 2026-06-04
+- autopilot 升级至 v4.3.0：QA Tier 编号体系重构 + 集成验证合并 + 多技术栈支持
+  - 编号重构：Tier 0/1/1.5/2/3/3.5/4 → T0/T1/T2/T3/T4/T5（按执行顺序，连续无跳跃）
+  - Wave 重构：Wave 1/1.5/2 → Wave 1/2/3（连续无跳跃）
+  - 合并集成验证：旧 Tier 3（独立集成验证）合并为 T3 Step 0（场景验证的健康检查前置）
+  - 反跳过防护迁移到 T3 Step 0：触发后不可跳过，跳过须声明原因 + 人工审批
+  - 多技术栈支持：T1 静态验证新增 Java Maven/Gradle 命令对照表
+  - 服务启动规范：从纯 Node.js 扩展为 Node.js + Spring Boot 对照表
+  - 12 个文件全量同步（qa-phase/SKILL/doctor/auto-fix/report-template/reviewer-prompt 等）
 
 ### 2026-06-03
 - autopilot 升级至 v4.2.0：Tier 3 集成验证新增反跳过防护 + 人工审批门
