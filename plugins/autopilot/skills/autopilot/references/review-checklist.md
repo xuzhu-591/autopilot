@@ -1,10 +1,10 @@
 # 审查清单
 
-## code-quality-reviewer（T4b）
+## code-quality-reviewer（Tier 4b）
 
 核心审查清单已合并到 `code-quality-reviewer-prompt.md`，覆盖 Pass 1 CRITICAL（安全、竞态、LLM 信任边界、枚举完整性）和 Pass 2 INFORMATIONAL（模式一致性、边界处理、错误处理质量、代码组织、版本一致性）。
 
-## 专家子代理（T4c-4h）
+## 专家子代理（Tier 4c-4h）
 
 深度检查已委托给条件触发的并行专家 Agent，每个专家有独立的 prompt 模板：
 

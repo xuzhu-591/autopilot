@@ -167,23 +167,23 @@ git diff --stat + git diff → 分类变更 → 判断影响半径
 
 ### Wave 1：命令执行（并行）
 ```
-T0: 红队契约测试（npx tsx --test ...）
-T1: 静态验证 — tsc --noEmit / eslint / 构建 / 单元测试（并行）
-T2: 回归检查（条件：≥3 文件）
+Tier 0: 红队契约测试（npx tsx --test ...）
+Tier 1: 静态验证 — tsc --noEmit / eslint / 构建 / 单元测试（并行）
+Tier 2: 回归检查（条件：≥3 文件）
 ```
 
 ### Wave 2：场景验证（串行，必须执行）
 ```
-T3 Step 0: 集成健康检查（条件触发，触发后不可跳过；跳过须声明原因+人工审批）
-T3 Step 1+: 真实场景执行（设计文档中的每个场景，记录 执行: + 输出:）
-T5: 性能保障（条件性，不阻塞）
+Tier 3 Step 0: 集成健康检查（条件触发，触发后不可跳过；跳过须声明原因+人工审批）
+Tier 3 Step 1+: 真实场景执行（设计文档中的每个场景，记录 执行: + 输出:）
+Tier 5: 性能保障（条件性，不阻塞）
 ```
 
 ### Wave 3：AI 审查（并行 Agent）
 ```
-Agent:design-reviewer (sonnet) → 设计符合性 (T4a)
-Agent:code-quality-reviewer (sonnet) → 代码质量 (T4b)
-Agent:specialists (sonnet) → 条件专家 (T4c-h)
+Agent:design-reviewer (sonnet) → 设计符合性 (Tier 4a)
+Agent:code-quality-reviewer (sonnet) → 代码质量 (Tier 4b)
+Agent:specialists (sonnet) → 条件专家 (Tier 4c-h)
 
 所有 Agent 并行启动，完成后合流。
 参考: references/design-reviewer-prompt.md, references/code-quality-reviewer-prompt.md
@@ -191,12 +191,12 @@ Agent:specialists (sonnet) → 条件专家 (T4c-h)
 
 ### 结果判定
 - **全部 ✅（可有 ⚠️）** → gate: "review-accept"（需人工审批）/"merge"（auto_approve）
-- **T3 健康检查声明跳过** → gate: "review-accept"（禁止 auto-approve）
+- **Tier 3 健康检查声明跳过** → gate: "review-accept"（禁止 auto-approve）
 - **有 ❌（<3 个）** → phase: "auto-fix"
-- **T0+T1 ≥3 个 ❌** → 跳过 Wave 2/3，直接 phase: "auto-fix"
+- **Tier 0+Tier 1 ≥3 个 ❌** → 跳过 Wave 2/3，直接 phase: "auto-fix"
 
 ### 场景完整性检查
-统计 T3 中 `执行:` 标记数 = 设计文档场景总数。不等 → 有场景被跳过，回去补做。
+统计 Tier 3 中 `执行:` 标记数 = 设计文档场景总数。不等 → 有场景被跳过，回去补做。
 
 ---
 
@@ -204,7 +204,7 @@ Agent:specialists (sonnet) → 条件专家 (T4c-h)
 
 读取 QA 报告中所有 ❌ 项，逐项修复。**绝对不允许修改红队测试。**
 
-修复优先级：T0 > T3 > T1 > T4+
+修复优先级：Tier 0 > Tier 3 > Tier 1 > Tier 4+
 每个修复必须附命令输出作为证据。
 
 系统化调试：观察 → 假设 → 验证 → 修复。
