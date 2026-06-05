@@ -1,0 +1,64 @@
+plugins/autopilot/skills/autopilot/references/qa-phase.md
+  f2aa17d00e488bf7 148-165,168
+.claude-plugin/marketplace.json
+  f2aa17d00e488bf7 32
+CLAUDE.md
+  f2aa17d00e488bf7 51
+plugins/autopilot/skills/autopilot/references/plan-reviewer-prompt.md
+  f2aa17d00e488bf7 28
+plugins/autopilot/skills/autopilot/SKILL.md
+  f2aa17d00e488bf7 100,179
+plugins/autopilot/.claude-plugin/plugin.json
+  f2aa17d00e488bf7 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "55c0c156ee74af6be69773fe1242536a8cf40e61",
+  "prompts": {
+    "f2aa17d00e488bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54e4fa22-2184-4b7b-84a9-2f34e8fef067",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 25,
+      "total_deletions": 5,
+      "accepted_lines": 25,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "CLAUDE.md": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 2,
+          "deletions": 1,
+          "accepted_lines": 2
+        },
+        "plugins/autopilot/skills/autopilot/references/qa-phase.md": {
+          "additions": 19,
+          "accepted_lines": 19
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/references/plan-reviewer-prompt.md": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
