@@ -1,0 +1,93 @@
+plugins/autopilot/skills/autopilot/references/project-qa-guide.md
+  f2aa17d00e488bf7 14-17,34-36,44-45
+plugins/autopilot/skills/autopilot/references/design-modes.md
+  f2aa17d00e488bf7 12,51
+plugins/autopilot/README.md
+  f2aa17d00e488bf7 22
+plugins/autopilot/skills/autopilot/SKILL.md
+  f2aa17d00e488bf7 170-172,177-179,184-186,194,196,199,207
+plugins/autopilot/skills/autopilot/references/qa-report-template.md
+  f2aa17d00e488bf7 8,12,16-17,25,28,36-38,41,47,51
+plugins/autopilot/skills/autopilot/references/review-checklist.md
+  f2aa17d00e488bf7 3,7
+plugins/autopilot/skills/autopilot/references/auto-fix-phase.md
+  f2aa17d00e488bf7 17,27,32,37,40,71-72
+plugins/autopilot/skills/autopilot/references/qa-phase.md
+  f2aa17d00e488bf7 10-15,33-38,47,84,89,102,108,114,127,130,132,146,154,156-163,179,183,194,200,207,222,232,241,247,256,273,275,278,283,287,289
+plugins/autopilot/skills/autopilot/references/completion-report-template.md
+  f2aa17d00e488bf7 29-32
+plugins/autopilot/skills/autopilot-doctor/SKILL.md
+  f2aa17d00e488bf7 432-437,440-441,445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9.preview.0",
+  "base_commit_sha": "782c69f33a8f161975c0cc2e9c5a1fc052482a97",
+  "prompts": {
+    "f2aa17d00e488bf7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54e4fa22-2184-4b7b-84a9-2f34e8fef067",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 109,
+      "total_deletions": 100,
+      "accepted_lines": 107,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot/references/completion-report-template.md": {
+          "additions": 4,
+          "deletions": 4,
+          "accepted_lines": 4
+        },
+        "plugins/autopilot/skills/autopilot/references/auto-fix-phase.md": {
+          "additions": 7,
+          "deletions": 7,
+          "accepted_lines": 7
+        },
+        "plugins/autopilot/skills/autopilot/references/project-qa-guide.md": {
+          "additions": 9,
+          "deletions": 9,
+          "accepted_lines": 9
+        },
+        "plugins/autopilot/README.md": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 13,
+          "deletions": 13,
+          "accepted_lines": 13
+        },
+        "plugins/autopilot/skills/autopilot/references/qa-report-template.md": {
+          "additions": 12,
+          "deletions": 12,
+          "accepted_lines": 12
+        },
+        "plugins/autopilot/skills/autopilot/references/qa-phase.md": {
+          "additions": 50,
+          "deletions": 41,
+          "accepted_lines": 48
+        },
+        "plugins/autopilot/skills/autopilot/references/review-checklist.md": {
+          "additions": 2,
+          "deletions": 2,
+          "accepted_lines": 2
+        },
+        "plugins/autopilot/skills/autopilot/references/design-modes.md": {
+          "additions": 2,
+          "deletions": 2,
+          "accepted_lines": 2
+        },
+        "plugins/autopilot/skills/autopilot-doctor/SKILL.md": {
+          "additions": 9,
+          "deletions": 9,
+          "accepted_lines": 9
+        }
+      }
+    }
+  }
+}
