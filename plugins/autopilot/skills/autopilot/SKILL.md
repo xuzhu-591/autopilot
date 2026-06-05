@@ -97,6 +97,7 @@ step 2: 设计文档编写
   ├─ Fast：1 个 Explore agent 探索代码
   ├─ 并行启动验收场景生成器 Agent (sonnet)，prompt 参考 references/scenario-generator-prompt.md（Fast 模式跳过）
   ├─ 写设计文档到状态文件 ## 设计文档 和 ## 实现计划 区域
+  ├─ ⚠️ 验证方案必须包含可直接执行的命令（不接受"验证 X 是否正确"等描述性文字）
   └─ Standard：ExitPlanMode 请求审批 / Fast：编排器自审
 
 step 3: Plan 审查（⚠️ Standard 模式必须执行，Fast 模式为编排器自审）
@@ -175,7 +176,7 @@ Tier 2: 回归检查（条件：≥3 文件）
 ### Wave 2：场景验证（串行，必须执行）
 ```
 Tier 3 Step 0: 集成健康检查（条件触发，触发后不可跳过；跳过须声明原因+人工审批）
-Tier 3 Step 1+: 真实场景执行（设计文档中的每个场景，记录 执行: + 输出:）
+Tier 3 Step 1+: 场景验证（优先写 e2e 测试文件 → 次选跑已有 e2e → 兜底手动命令验证）
 Tier 5: 性能保障（条件性，不阻塞）
 ```
 
