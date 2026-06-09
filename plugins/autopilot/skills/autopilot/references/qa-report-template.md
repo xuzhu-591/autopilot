@@ -22,6 +22,12 @@ Tier 3 健康检查: ✅ dev server 启动成功 (port 3000, 4.2s)
   执行: curl http://localhost:3000/api/avatar/123
   输出: Internal Server Error (HTTP 500, 0.3s)
 
+**Tier 3 Skip 审计**（仅 Tier 3 标记 N/A 或跳过时填写）
+- 排除条件命中: 仅文档变更（README.md, CHANGELOG.md）
+- 变更文件清单: README.md (+12/-3), CHANGELOG.md (+5/-1)
+- 运行时代码变更: 无
+- 结论: Tier 3 N/A
+
 **Tier 4a/4b: AI 审查**
 ✅ 设计符合性 | ⚠️ 安全: 1 低风险 | ✅ 边界处理
 

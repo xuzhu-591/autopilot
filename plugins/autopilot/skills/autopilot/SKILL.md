@@ -175,7 +175,7 @@ Tier 2: 回归检查（条件：≥3 文件）
 
 ### Wave 2：场景验证（串行，必须执行）
 ```
-Tier 3 Step 0: 集成健康检查（条件触发，触发后不可跳过；跳过须声明原因+人工审批）
+Tier 3 Step 0: 集成健康检查（默认执行，仅纯静态排除清单可标记 N/A；跳过须 Skip 审计+人工审批）
 Tier 3 Step 1+: 场景验证（优先写 e2e 测试文件 → 次选跑已有 e2e → 兜底手动命令验证）
 Tier 5: 性能保障（条件性，不阻塞）
 ```
@@ -192,7 +192,7 @@ Agent:specialists (sonnet) → 条件专家 (Tier 4c-h)
 
 ### 结果判定
 - **全部 ✅（可有 ⚠️）** → gate: "review-accept"（需人工审批）/"merge"（auto_approve）
-- **Tier 3 健康检查声明跳过** → gate: "review-accept"（禁止 auto-approve）
+- **Tier 3 健康检查声明跳过或 N/A 但 Skip 审计不合理** → gate: "review-accept"（禁止 auto-approve）
 - **有 ❌（<3 个）** → phase: "auto-fix"
 - **Tier 0+Tier 1 ≥3 个 ❌** → 跳过 Wave 2/3，直接 phase: "auto-fix"
 
