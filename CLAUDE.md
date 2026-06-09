@@ -48,7 +48,7 @@
 
 ---
 
-### 3. autopilot (v4.5.1)
+### 3. autopilot (v4.5.2)
 **类型**: Skill + Hook 插件
 **功能**: AI 自动驾驶工程套件（子代理驱动线性流程 + 蓝图对抗 + 五层 QA + 知识工程 + 智能提交 + 工程诊断 + Worktree 管理）
 
@@ -288,6 +288,9 @@
 ## 更新日志
 
 ### 2026-06-04
+- autopilot 升级至 v4.5.2：修复 design.md 引用缺失 — 单任务模式设计文档在 state.md 中，plan-reviewer/红队读了不存在的独立文件
+  - SKILL.md 3 处 `design.md` 引用改为 `state.md 中 ## 设计文档 区域`（plan-reviewer 输入、蓝队输入、红队输入）
+
 - autopilot 升级至 v4.5.1：修复 brainstorm→design 衔接缺失 HARD-GATE，防止跳过设计文档直接写实现计划
   - step 2 拆分为 step 2a（设计文档）+ step 2b（实现计划），2a 完成前禁止进入 2b
   - step 2a 新增 HARD-GATE：## 设计文档 区域必须非空且 ≥3 章节
