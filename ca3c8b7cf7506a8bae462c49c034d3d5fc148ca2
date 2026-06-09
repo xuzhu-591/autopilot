@@ -1,0 +1,51 @@
+CLAUDE.md
+  53773e16271a9ba6 51,291-293
+.claude-plugin/marketplace.json
+  53773e16271a9ba6 32
+plugins/autopilot/skills/autopilot/SKILL.md
+  53773e16271a9ba6 112,144,150
+plugins/autopilot/.claude-plugin/plugin.json
+  53773e16271a9ba6 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "ca3c8b7cf7506a8bae462c49c034d3d5fc148ca2",
+  "prompts": {
+    "53773e16271a9ba6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3e02f9b-63ba-45b2-82df-1d3a051f1c2f",
+        "model": "mimo-v2.5-pro"
+      },
+      "human_author": "Xu Zhu <xu.zhu.hi@outlook.com>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 6,
+      "accepted_lines": 9,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "plugins/autopilot/skills/autopilot/SKILL.md": {
+          "additions": 3,
+          "deletions": 3,
+          "accepted_lines": 3
+        },
+        ".claude-plugin/marketplace.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        },
+        "CLAUDE.md": {
+          "additions": 4,
+          "deletions": 1,
+          "accepted_lines": 4
+        },
+        "plugins/autopilot/.claude-plugin/plugin.json": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
