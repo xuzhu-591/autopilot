@@ -109,7 +109,7 @@ step 2b: 实现计划编写
 
 step 3: Plan 审查（⚠️ Standard 模式必须执行，Fast 模式为编排器自审）
   ├─ Standard：启动 Agent:plan-reviewer (sonnet)，prompt 参考 references/plan-reviewer-prompt.md
-  ├─ 输入：{task_dir} 路径 + 目标描述 + state.md 中 ## 设计文档 区域内容 + 验收场景
+  ├─ 输入：{task_dir} 路径 + 目标描述 + design.md + 验收场景
   ├─ PASS → 追加变更日志，继续
   └─ FAIL → 修复设计问题，重审（最多 2 轮）。第 2 轮仍 FAIL 标注交由用户判断
 
@@ -141,13 +141,13 @@ step 1: 红蓝对抗（⚠️ 必须并行启动）
   │
   ├─ Agent:blue（蓝队）:
   │   prompt: references/blue-team-prompt.md，填入：
-  │   - task_dir 路径（读 state.md 中 ## 设计文档 + ## 实现计划 区域）
+  │   - task_dir 路径（读 state.md + design.md）
   │   - repos.yaml 路径（读 worktree 路径）
   │   - 设计文档和实现计划
   │
   └─ Agent:red（红队）:
       prompt: references/red-team-prompt.md，填入：
-      - task_dir 路径（仅 state.md 中 ## 设计文档 区域，不含 ## 实现计划）
+      - task_dir 路径（仅设计文档，不含实现计划）
       - repos.yaml 路径（⚠️ worktree 字段已清空！红队只能读 path=主仓库源码）
       - 信息隔离：红队绝对不读蓝队新写的实现代码
 
