@@ -92,12 +92,19 @@ step 1: 分流
   ├─ fast_mode=true → Fast Mode（直接步骤 2，跳过 brainstorm + plan-reviewer Agent）
   └─ 其他 → Standard（调用 Skill: "autopilot-brainstorm"，完成后继续步骤 2）
 
-step 2: 设计文档编写
-  ├─ Standard：读取 brainstorm.md 共识 + 使用 Explore agent（1-2 个）分析代码库
+step 2a: 设计文档编写
+  ├─ Standard：Read brainstorm.md（这是输入材料，不是设计文档本身）+ Explore agent（1-2 个）分析代码库
   ├─ Fast：1 个 Explore agent 探索代码
   ├─ 并行启动验收场景生成器 Agent (sonnet)，prompt 参考 references/scenario-generator-prompt.md（Fast 模式跳过）
-  ├─ 写设计文档到状态文件 ## 设计文档 和 ## 实现计划 区域
+  ├─ 写设计文档到状态文件 ## 设计文档 区域（概述、路由、参数、数据源、响应结构、验证方案等）
   ├─ ⚠️ 验证方案必须包含可直接执行的命令（不接受"验证 X 是否正确"等描述性文字）
+  ├─ ⚠️ HARD-GATE：## 设计文档 区域必须非空且内容完整（≥3 个章节），否则禁止进入 step 2b
+  └─ 确认设计文档非空后继续 step 2b
+
+step 2b: 实现计划编写
+  ├─ ⚠️ 前置条件：## 设计文档 已写入（Read 验证非空）
+  ├─ 基于设计文档拆解实现步骤，写入 ## 实现计划 区域
+  ├─ 每步必须有具体的文件路径和操作（新建/修改哪个文件、实现什么方法）
   └─ Standard：ExitPlanMode 请求审批 / Fast：编排器自审
 
 step 3: Plan 审查（⚠️ Standard 模式必须执行，Fast 模式为编排器自审）
