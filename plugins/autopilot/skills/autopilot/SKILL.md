@@ -96,20 +96,21 @@ step 2a: 设计文档编写
   ├─ Standard：Read brainstorm.md（这是输入材料，不是设计文档本身）+ Explore agent（1-2 个）分析代码库
   ├─ Fast：1 个 Explore agent 探索代码
   ├─ 并行启动验收场景生成器 Agent (sonnet)，prompt 参考 references/scenario-generator-prompt.md（Fast 模式跳过）
-  ├─ 写设计文档到状态文件 ## 设计文档 区域（概述、路由、参数、数据源、响应结构、验证方案等）
+  ├─ Write 设计文档到 $TASK_DIR/design.md（独立文件，概述、路由、参数、数据源、响应结构、验证方案等）
+  ├─ 同步摘要到 state.md ## 设计文档 区域（一句话概述 + 指向 design.md 的引用）
   ├─ ⚠️ 验证方案必须包含可直接执行的命令（不接受"验证 X 是否正确"等描述性文字）
-  ├─ ⚠️ HARD-GATE：## 设计文档 区域必须非空且内容完整（≥3 个章节），否则禁止进入 step 2b
-  └─ 确认设计文档非空后继续 step 2b
+  ├─ ⚠️ HARD-GATE：$TASK_DIR/design.md 必须存在且内容完整（≥3 个章节），否则禁止进入 step 2b
+  └─ Read 确认 design.md 非空后继续 step 2b
 
 step 2b: 实现计划编写
-  ├─ ⚠️ 前置条件：## 设计文档 已写入（Read 验证非空）
-  ├─ 基于设计文档拆解实现步骤，写入 ## 实现计划 区域
+  ├─ ⚠️ 前置条件：$TASK_DIR/design.md 已写入（Read 验证非空）
+  ├─ 基于 design.md 拆解实现步骤，写入 state.md ## 实现计划 区域
   ├─ 每步必须有具体的文件路径和操作（新建/修改哪个文件、实现什么方法）
   └─ Standard：ExitPlanMode 请求审批 / Fast：编排器自审
 
 step 3: Plan 审查（⚠️ Standard 模式必须执行，Fast 模式为编排器自审）
   ├─ Standard：启动 Agent:plan-reviewer (sonnet)，prompt 参考 references/plan-reviewer-prompt.md
-  ├─ 输入：{task_dir} 路径 + 目标描述 + design.md + 验收场景
+  ├─ 输入：{task_dir} 路径 + 目标描述 + $TASK_DIR/design.md + 验收场景
   ├─ PASS → 追加变更日志，继续
   └─ FAIL → 修复设计问题，重审（最多 2 轮）。第 2 轮仍 FAIL 标注交由用户判断
 
@@ -141,13 +142,13 @@ step 1: 红蓝对抗（⚠️ 必须并行启动）
   │
   ├─ Agent:blue（蓝队）:
   │   prompt: references/blue-team-prompt.md，填入：
-  │   - task_dir 路径（读 state.md + design.md）
+  │   - task_dir 路径（读 $TASK_DIR/design.md + state.md 中 ## 实现计划）
   │   - repos.yaml 路径（读 worktree 路径）
   │   - 设计文档和实现计划
   │
   └─ Agent:red（红队）:
       prompt: references/red-team-prompt.md，填入：
-      - task_dir 路径（仅设计文档，不含实现计划）
+      - task_dir 路径（仅 $TASK_DIR/design.md，不含实现计划）
       - repos.yaml 路径（⚠️ worktree 字段已清空！红队只能读 path=主仓库源码）
       - 信息隔离：红队绝对不读蓝队新写的实现代码
 
